@@ -77,11 +77,11 @@ describe("DiscoverScreen", () => {
 
     renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
 
-    // Exact glyph (e.g. "$30" vs "US$30") depends on the runtime's default
-    // locale — the component deliberately uses the visitor's own locale, so
-    // the test only asserts the currency was actually applied and the
-    // amount is right, not a specific symbol rendering.
-    await waitFor(() => expect(screen.getByText(/US?\$30/)).toBeInTheDocument());
+    // formatPrice pins locale to "en-US" specifically so this is
+    // deterministic across environments (verified live: the previous
+    // undefined-locale version rendered differently on Ubuntu CI than on a
+    // local Windows run of the exact same code and same test).
+    await waitFor(() => expect(screen.getByText("$30")).toBeInTheDocument());
   });
 
   it("shows no price at all when priceAmount hasn't been verified", async () => {

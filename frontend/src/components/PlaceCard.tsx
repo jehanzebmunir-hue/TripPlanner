@@ -21,7 +21,13 @@ interface Props {
 function formatPrice(amount: number | null | undefined, currency: string): string | null {
   if (amount == null) return null;
   if (amount === 0) return "Free";
-  return new Intl.NumberFormat(undefined, { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
+  // A fixed locale, not the runtime's default (`undefined`) -- Intl's
+  // default-locale resolution is environment-dependent (verified live: the
+  // exact same code rendered "$30" on Ubuntu CI but a different string
+  // locally on Windows), which would have made price formatting silently
+  // inconsistent between this app's actual production environment and
+  // whatever gets tested locally, not just a test-flakiness issue.
+  return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
 }
 
 export function PlaceCard({ place, added, categoryLabel, currency, onToggleAdd, onConfirm }: Props) {
