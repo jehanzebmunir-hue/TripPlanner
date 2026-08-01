@@ -3,7 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const fetchWithRetry = vi.fn();
 vi.mock("../lib/httpRetry", () => ({ fetchWithRetry: (...a: unknown[]) => fetchWithRetry(...a) }));
 
-const CITY = { slug: "nyc", name: "New York, NY", country: "US", seatgeekVenueCity: "New York" };
+const CITY = { slug: "nyc", name: "New York, NY", country: "US", lat: 40.7128, lng: -74.006, seatgeekVenueCity: "New York" };
 
 function response(events: unknown[]): Response {
   return new Response(JSON.stringify({ events }), { status: 200 });

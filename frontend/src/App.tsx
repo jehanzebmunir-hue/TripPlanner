@@ -125,6 +125,17 @@ export default function App() {
         {tab === "checklist" && tripId && trip && <ChecklistScreen tripId={tripId} city={trip.city} />}
         {tab !== "setup" && !tripId && <p className="text-sm text-ink-soft">Set up a trip first.</p>}
       </main>
+
+      {/* Required attribution for OpenStreetMap-sourced place data (ODbL) —
+          a single blanket credit here, not per-card, matches how OSM data
+          is normally attributed in an app rather than in a curated dataset. */}
+      <footer className="border-t border-line px-5 py-3 text-center font-mono text-[10px] uppercase tracking-wide text-ink-faint">
+        Place data ©{" "}
+        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline">
+          OpenStreetMap
+        </a>{" "}
+        contributors
+      </footer>
     </div>
   );
 }

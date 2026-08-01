@@ -4,6 +4,11 @@ export interface CityConfig {
   slug: string;
   name: string;
   country: string;
+  // Real coordinates, geocoded live against Nominatim (OSM's own geocoder)
+  // rather than asserted from memory — used as the anchor point for the
+  // overpass adapter's around: radius queries.
+  lat: number;
+  lng: number;
   ticketmasterMarket?: string;
   seatgeekVenueCity?: string;
   /**

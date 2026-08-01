@@ -163,20 +163,31 @@ function sleep(ms: number): Promise<void> {
 
 /**
  * Pre-warms the verified/major-world-city tier (config/cities.ts's
- * priorityTier) once at server startup, staggered to avoid a startup burst
- * against Ticketmaster/Google Places. Deliberately small and one-shot — not
- * a return to proactively refreshing the whole registry, just insurance
+ * priorityTier) once at server startup. Deliberately small and one-shot —
+ * not a return to proactively refreshing the whole registry, just insurance
  * against the first real visitor to a well-known city being the one who
  * pays ensureCityFresh's cold-start latency. Everything outside this tier
  * is ingested purely on demand.
+ *
+ * Runs strictly sequentially (awaits each city fully before starting the
+ * next), not just start-time-staggered — a fire-and-forget setTimeout stagger
+ * still lets slow cities overlap once more than one takes longer than the
+ * stagger interval, which is exactly what happened testing this live: a
+ * 500ms stagger against ~44 cities, each running up to 4 real adapters,
+ * built up real concurrent load against Overpass's shared public instance
+ * and got requests rejected under it. Sequential is slower in wall-clock
+ * time but the only way to actually bound concurrency at 1.
  */
-export function warmPriorityCities(staggerMs = 500): void {
+export async function warmPriorityCities(delayBetweenMs = 300): Promise<void> {
   const priorityCities = CITIES.filter((c) => c.priorityTier != null);
-  priorityCities.forEach((city, i) => {
-    setTimeout(() => {
-      ensureCityFresh(city.slug).catch((err) => console.error(`[warm] ${city.slug} failed:`, err));
-    }, i * staggerMs);
-  });
+  for (const city of priorityCities) {
+    try {
+      await ensureCityFresh(city.slug);
+    } catch (err) {
+      console.error(`[warm] ${city.slug} failed:`, err);
+    }
+    await sleep(delayBetweenMs);
+  }
 }
 
 export interface AdapterHealthStatus {

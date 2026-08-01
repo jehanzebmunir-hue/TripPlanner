@@ -10,6 +10,11 @@ export type AdapterTier = "static" | "structured" | "volatile";
 export const ADAPTER_TIER: Record<string, AdapterTier> = {
   seed: "static",
   "google-places": "structured",
+  // Unlike google-places, this has no metered budget to protect — kept on
+  // the same conservative 24h cadence anyway rather than hammering
+  // Overpass's public instance more than the data (static sightseeing
+  // POIs) actually needs.
+  overpass: "structured",
   ticketmaster: "volatile",
   seatgeek: "volatile",
   "nyc-open-data-events": "volatile",

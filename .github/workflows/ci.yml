@@ -1,15 +1,10 @@
 name: CI
 
-# Runs on every push/PR once this repo has a real git history and a GitHub
-# remote — neither exists yet (see README "What's real vs. stubbed"). This
-# file is ready to go the moment `git init` + a remote are set up; nothing
-# else needs to change.
-
 on:
   push:
-    branches: [main]
+    branches: [master]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 jobs:
   backend:

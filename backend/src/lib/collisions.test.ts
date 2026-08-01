@@ -3,7 +3,7 @@ import { CityConfig } from "../types";
 import { findMarketCollisions } from "./collisions";
 
 function city(overrides: Partial<CityConfig> & Pick<CityConfig, "slug" | "name" | "country">): CityConfig {
-  return overrides;
+  return { lat: 0, lng: 0, ...overrides };
 }
 
 describe("findMarketCollisions", () => {

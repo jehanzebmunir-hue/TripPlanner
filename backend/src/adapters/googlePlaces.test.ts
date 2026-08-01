@@ -6,7 +6,7 @@ vi.mock("../lib/rateLimiter", () => ({ withinDailyBudget: (...a: unknown[]) => w
 const fetchWithRetry = vi.fn();
 vi.mock("../lib/httpRetry", () => ({ fetchWithRetry: (...a: unknown[]) => fetchWithRetry(...a) }));
 
-const CITY = { slug: "nyc", name: "New York, NY", country: "US" };
+const CITY = { slug: "nyc", name: "New York, NY", country: "US", lat: 40.7128, lng: -74.006 };
 
 describe("googlePlacesAdapter", () => {
   const originalKey = process.env.GOOGLE_PLACES_API_KEY;
