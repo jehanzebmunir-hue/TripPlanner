@@ -1,8 +1,10 @@
 import { CityConfig } from "../types";
 
-// priorityTier exists to order the metered google-places refresh (see
-// scheduler.ts) so a real budget ceiling, if the registry ever grows past
-// it, hits the least-important cities first rather than arbitrarily.
+// priorityTier marks the cities pre-warmed at server startup (see
+// services/ingestion.service.ts's warmPriorityCities) so the first real
+// visitor to a major city doesn't pay the on-demand ensureCityFresh
+// cold-start latency. Everything outside this small set is fetched purely
+// on demand, the first time someone actually requests it.
 //
 // Tier 1 (11 cities): backed by real, cross-corroborated international-
 // arrivals data — Euromonitor's own December 2025 press release directly

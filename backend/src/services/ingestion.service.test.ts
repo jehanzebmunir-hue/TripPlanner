@@ -110,3 +110,87 @@ describe("ingestCity", () => {
     expect(health.find((h) => h.adapter === "seatgeek")?.degraded).toBe(true);
   });
 });
+
+describe("ensureCityFresh", () => {
+  beforeEach(() => {
+    upsert.mockClear();
+    healthUpsert.mockClear();
+    healthFindMany.mockClear();
+    workingAdapter.run.mockClear();
+    emptyAdapter.run.mockClear();
+    brokenAdapter.run.mockClear();
+  });
+
+  it("no-ops for an unregistered city rather than throwing", async () => {
+    const { ensureCityFresh } = await import("./ingestion.service");
+    await expect(ensureCityFresh("nowhere")).resolves.toBeUndefined();
+    expect(healthFindMany).not.toHaveBeenCalled();
+  });
+
+  it("fetches every default adapter for a never-before-ingested city", async () => {
+    healthFindMany.mockResolvedValue([]); // no AdapterHealth rows yet
+    const { ensureCityFresh } = await import("./ingestion.service");
+
+    await ensureCityFresh("testville");
+
+    expect(workingAdapter.run).toHaveBeenCalledTimes(1);
+    expect(emptyAdapter.run).toHaveBeenCalledTimes(1);
+    expect(brokenAdapter.run).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips adapters that succeeded recently, within their tier's refresh window", async () => {
+    const now = new Date();
+    healthFindMany.mockResolvedValue([
+      { city: "testville", adapter: "working", lastSuccessAt: now },
+      { city: "testville", adapter: "empty", lastSuccessAt: now },
+      { city: "testville", adapter: "broken", lastSuccessAt: now },
+    ]);
+    const { ensureCityFresh } = await import("./ingestion.service");
+
+    await ensureCityFresh("testville");
+
+    expect(workingAdapter.run).not.toHaveBeenCalled();
+    expect(emptyAdapter.run).not.toHaveBeenCalled();
+    expect(brokenAdapter.run).not.toHaveBeenCalled();
+  });
+
+  it("re-fetches only the adapter whose refresh window has actually elapsed", async () => {
+    const now = new Date();
+    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+    // "working"/"empty"/"broken" all default to the volatile tier (1h) since
+    // they're not in ADAPTER_TIER — real adapter names (google-places etc.)
+    // are covered by config/adapterCadence.ts directly.
+    healthFindMany.mockResolvedValue([
+      { city: "testville", adapter: "working", lastSuccessAt: now },
+      { city: "testville", adapter: "empty", lastSuccessAt: twoHoursAgo },
+      { city: "testville", adapter: "broken", lastSuccessAt: now },
+    ]);
+    const { ensureCityFresh } = await import("./ingestion.service");
+
+    await ensureCityFresh("testville");
+
+    expect(workingAdapter.run).not.toHaveBeenCalled();
+    expect(emptyAdapter.run).toHaveBeenCalledTimes(1);
+    expect(brokenAdapter.run).not.toHaveBeenCalled();
+  });
+
+  it("collapses concurrent calls for the same city into a single real ingest", async () => {
+    healthFindMany.mockResolvedValue([]);
+    const { ensureCityFresh } = await import("./ingestion.service");
+
+    await Promise.all([ensureCityFresh("testville"), ensureCityFresh("testville"), ensureCityFresh("testville")]);
+
+    expect(healthFindMany).toHaveBeenCalledTimes(1);
+    expect(workingAdapter.run).toHaveBeenCalledTimes(1);
+  });
+
+  it("allows a fresh call after a previous one has finished, rather than staying locked forever", async () => {
+    healthFindMany.mockResolvedValue([]);
+    const { ensureCityFresh } = await import("./ingestion.service");
+
+    await ensureCityFresh("testville");
+    await ensureCityFresh("testville");
+
+    expect(healthFindMany).toHaveBeenCalledTimes(2);
+  });
+});

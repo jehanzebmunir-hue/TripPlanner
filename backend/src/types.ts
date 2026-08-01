@@ -17,8 +17,10 @@ export interface CityConfig {
    * 1 = verified via real, corroborated international-arrivals data; 2 =
    * unambiguous major world city by general knowledge, not a precise
    * citation. Undefined = no claim either way, not "unimportant." Used to
-   * order the metered google-places refresh so real budget constraints (see
-   * scheduler.ts) hit the least-important cities first, not arbitrarily.
+   * pre-warm a small, deliberate set of cities at server startup (see
+   * ingestion.service.ts's warmPriorityCities) so the first real visitor
+   * searching a major city isn't the one paying ensureCityFresh's cold-start
+   * latency — everything else is ingested purely on demand.
    */
   priorityTier?: 1 | 2;
 }

@@ -12,10 +12,12 @@ interface GPlace {
 // This is the one metered/paid adapter in the app — worth a real spend
 // guard, not just a key gate. 166 = the real free-tier ceiling (Text Search
 // Pro SKU's 5,000 calls/month ÷ 30), not an arbitrary placeholder — staying
-// under it at 1 call/city/day (see scheduler.ts's STRUCTURED_REFRESH_MS)
-// keeps this adapter genuinely free regardless of registry size, up to
-// ~166 actively-refreshed cities. Raise this only if you've deliberately
-// decided to start paying $32/1,000 calls past the free allowance.
+// under it at up to 1 call/city/day (see config/adapterCadence.ts's
+// structured-tier REFRESH_MS, checked by ensureCityFresh before each
+// on-demand re-fetch) keeps this adapter genuinely free regardless of
+// registry size, up to ~166 actively-visited cities. Raise this only if
+// you've deliberately decided to start paying $32/1,000 calls past the
+// free allowance.
 const DEFAULT_MAX_CALLS_PER_DAY = 166;
 
 export const googlePlacesAdapter: SourceAdapter = {

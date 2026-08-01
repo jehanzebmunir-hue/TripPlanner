@@ -12,7 +12,7 @@ import placesRoutes from "./routes/places.routes";
 import recommendRoutes from "./routes/recommend.routes";
 import tripsRoutes from "./routes/trips.routes";
 import { errorHandler } from "./middleware/error.middleware";
-import { startScheduler } from "./scheduler";
+import { warmPriorityCities } from "./services/ingestion.service";
 
 const app = express();
 const PORT = Number(process.env.PORT ?? 3001);
@@ -36,5 +36,5 @@ app.use(errorHandler as express.ErrorRequestHandler);
 
 app.listen(PORT, () => {
   console.log(`Trip planner API listening on port ${PORT}`);
-  startScheduler();
+  warmPriorityCities();
 });

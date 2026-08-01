@@ -1,7 +1,10 @@
 import { prisma } from "../lib/prisma";
 import { computeConfidence } from "../lib/decay";
+import { ensureCityFresh } from "./ingestion.service";
 
 export async function listPlaces(city: string, opts: { category?: string; tier?: string } = {}) {
+  await ensureCityFresh(city);
+
   const rows = await prisma.place.findMany({
     where: {
       city,

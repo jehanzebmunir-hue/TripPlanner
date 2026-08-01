@@ -1,6 +1,7 @@
 import { prisma } from "../lib/prisma";
-import { getCity } from "../config/cities";
+import { CITIES, getCity } from "../config/cities";
 import { ADAPTERS, DEFAULT_ADAPTERS } from "../adapters";
+import { ADAPTER_TIER, REFRESH_MS } from "../config/adapterCadence";
 
 export interface AdapterOutcome {
   count: number;
@@ -101,6 +102,81 @@ export async function ingestCity(
   }
 
   return results;
+}
+
+// Per-city in-flight lock so two concurrent requests for the same
+// never-before-seen (or simultaneously-stale) city don't both trigger
+// duplicate live API calls. A plain in-memory Map is enough for a
+// single-instance deployment (Render's free/Starter tiers both run one
+// instance) — it would need to move to something shared (e.g. a DB row) if
+// this ever ran on more than one instance at once.
+const inFlight = new Map<string, Promise<void>>();
+
+/**
+ * Ensures a city's data is fresh enough to serve, fetching live only for
+ * whichever adapters are actually stale (or have never run) rather than
+ * unconditionally re-running everything. This is what makes ingestion
+ * demand-driven: called from the read path (places.service.ts) instead of
+ * a background scheduler proactively warming the whole city registry
+ * regardless of whether anyone's asked for it.
+ */
+export async function ensureCityFresh(citySlug: string): Promise<void> {
+  const city = getCity(citySlug);
+  if (!city) return; // unregistered city — nothing to fetch, listPlaces will just see no rows
+
+  const existing = inFlight.get(citySlug);
+  if (existing) return existing;
+
+  const run = (async () => {
+    try {
+      const adapterNames = [...DEFAULT_ADAPTERS, ...(city.extraAdapters ?? [])];
+      const health = await prisma.adapterHealth.findMany({
+        where: { city: citySlug, adapter: { in: adapterNames } },
+      });
+      const lastSuccessByAdapter = new Map(health.map((h) => [h.adapter, h.lastSuccessAt]));
+
+      const now = Date.now();
+      const staleAdapters = adapterNames.filter((name) => {
+        const tier = ADAPTER_TIER[name] ?? "volatile";
+        const refreshMs = REFRESH_MS[tier];
+        const lastSuccessAt = lastSuccessByAdapter.get(name);
+        if (!lastSuccessAt) return true; // never succeeded — always worth trying
+        if (refreshMs === null) return false; // static tier, already succeeded once
+        return now - lastSuccessAt.getTime() >= refreshMs;
+      });
+
+      if (staleAdapters.length > 0) {
+        await ingestCity(citySlug, staleAdapters);
+      }
+    } finally {
+      inFlight.delete(citySlug);
+    }
+  })();
+
+  inFlight.set(citySlug, run);
+  return run;
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Pre-warms the verified/major-world-city tier (config/cities.ts's
+ * priorityTier) once at server startup, staggered to avoid a startup burst
+ * against Ticketmaster/Google Places. Deliberately small and one-shot — not
+ * a return to proactively refreshing the whole registry, just insurance
+ * against the first real visitor to a well-known city being the one who
+ * pays ensureCityFresh's cold-start latency. Everything outside this tier
+ * is ingested purely on demand.
+ */
+export function warmPriorityCities(staggerMs = 500): void {
+  const priorityCities = CITIES.filter((c) => c.priorityTier != null);
+  priorityCities.forEach((city, i) => {
+    setTimeout(() => {
+      ensureCityFresh(city.slug).catch((err) => console.error(`[warm] ${city.slug} failed:`, err));
+    }, i * staggerMs);
+  });
 }
 
 export interface AdapterHealthStatus {
