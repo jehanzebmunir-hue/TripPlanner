@@ -12,7 +12,11 @@ import {
   VibeOption,
 } from "./types";
 
-const BASE = "/api";
+// In local dev, Vite's server.proxy forwards "/api" to localhost:3001 (see
+// vite.config.ts) so a relative path works. In production the frontend and
+// backend are separate Render services with no shared origin/proxy, so
+// VITE_API_URL (baked in at build time) must point at the real backend host.
+const BASE = import.meta.env.VITE_API_URL ? `${import.meta.env.VITE_API_URL}/api` : "/api";
 const TOKEN_KEY = "authToken";
 
 export function getToken(): string | null {
