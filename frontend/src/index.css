@@ -1,0 +1,43 @@
+:root {
+  --paper: #ece7dc;
+  --paper-raised: #f5f1e7;
+  --ink: #201d19;
+  --ink-soft: #58524a;
+  --ink-faint: #8b8377;
+  --line: rgba(32, 29, 25, 0.15);
+  --accent: #2b5266;
+  --on-accent: #f5f1e7;
+  --verified: #3f7355;
+  --aging: #b8863b;
+  --stale: #9c4a3c;
+  --verified-bg: rgba(63, 115, 85, 0.12);
+  --aging-bg: rgba(184, 134, 59, 0.14);
+  --stale-bg: rgba(156, 74, 60, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #16181a;
+    --paper-raised: #1d2023;
+    --ink: #ede9e0;
+    --ink-soft: #b5aea2;
+    --ink-faint: #837c70;
+    --line: rgba(237, 233, 224, 0.14);
+    --accent: #7fb3c2;
+    --on-accent: #14171a;
+    --verified: #6fae84;
+    --aging: #d3a75c;
+    --stale: #ce8071;
+    --verified-bg: rgba(111, 174, 132, 0.14);
+    --aging-bg: rgba(211, 167, 92, 0.16);
+    --stale-bg: rgba(206, 128, 113, 0.14);
+  }
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  @apply bg-paper text-ink antialiased;
+}

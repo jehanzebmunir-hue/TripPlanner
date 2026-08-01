@@ -1,0 +1,32 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+build/
+
+# Local database
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+*.db
+*.db-journal
+
+# Secrets — real values only. .env.example and .env.production.example are
+# reference templates with no real secrets and are meant to be committed.
+.env
+.env.local
+.env.production
+.env.*.local
+Input.md
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor/OS noise
+.DS_Store
+.vscode/
+.idea/
+
+# Test/coverage output
+coverage/

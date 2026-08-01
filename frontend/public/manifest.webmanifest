@@ -1,0 +1,12 @@
+{
+  "name": "Trip Planner",
+  "short_name": "Trip Planner",
+  "description": "Discover, plan, and check off a trip — built around freshness you can trust.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ece7dc",
+  "theme_color": "#2b5266",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

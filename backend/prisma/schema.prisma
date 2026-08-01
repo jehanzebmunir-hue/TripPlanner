@@ -1,0 +1,179 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ── Places / Events / Deals store ───────────────────────────────────────────
+// One normalized record type for every discoverable thing, differentiated by
+// tier and category rather than by separate schemas per content type.
+
+model Place {
+  id             String    @id @default(cuid())
+  city           String
+  category       String
+  tier           String
+  name           String
+  description    String?
+  lat            Float?
+  lng            Float?
+  address        String?
+  source         String
+  externalId     String?
+  lastVerifiedAt DateTime  @default(now())
+  expiryAt       DateTime?
+  bookingLabel   String?
+  bookingRef     String?
+  // null = price not verified (the honest default — most seed entries);
+  // 0 = confirmed free; >0 = a real, sourced number. No separate currency
+  // column here on purpose: currency is already a solved per-city fact
+  // (config/localization.ts's getCurrency()), and duplicating it per-place
+  // would just create a second place for the data to disagree with itself.
+  priceAmount    Float?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  tripItems     TripItem[]
+  confirmations Confirmation[]
+
+  @@unique([city, source, externalId])
+  @@index([city, category])
+  @@index([city, tier])
+}
+
+// Tracks, per city + adapter, whether the last ingest attempt actually
+// succeeded — separate from Place data itself. Without this, a rate-limited
+// or dead API and a market with genuinely zero events look identical to
+// anyone looking at Place rows alone. This is what lets the frontend show
+// "event data may be temporarily outdated" instead of silently presenting
+// stale or empty results as if they were current.
+model AdapterHealth {
+  city                String
+  adapter             String
+  lastAttemptAt       DateTime
+  lastSuccessAt       DateTime?
+  lastError           String?
+  consecutiveFailures Int       @default(0)
+
+  @@id([city, adapter])
+}
+
+// A persisted, per-day call counter for adapters that hit a metered/paid
+// API (currently just google-places). Checked before every call, not just
+// logged after — the point is to stop spend before it happens, not to
+// report on it afterward. Persisted (not in-memory) so the count survives
+// a dev-server restart or, later, a redeploy; works identically on SQLite
+// today and Postgres later since it's a plain upsert-and-count, no
+// datastore-specific feature involved.
+model ApiCallBudget {
+  adapter   String
+  date      String // YYYY-MM-DD, UTC
+  callCount Int    @default(0)
+
+  @@id([adapter, date])
+}
+
+// One real fetch per currency pair per UTC day, cached here — not a
+// per-request live call. No provider is connected yet (see
+// lib/exchangeRates.ts); this table exists so the caching behavior itself
+// is real and tested before any real key goes in, same as ApiCallBudget.
+model ExchangeRateCache {
+  fromCurrency String
+  toCurrency   String
+  date         String // YYYY-MM-DD, UTC
+  rate         Float
+  fetchedAt    DateTime @default(now())
+
+  @@id([fromCurrency, toCurrency, date])
+}
+
+model Confirmation {
+  id        String   @id @default(cuid())
+  placeId   String
+  place     Place    @relation(fields: [placeId], references: [id], onDelete: Cascade)
+  vote      String
+  createdAt DateTime @default(now())
+}
+
+// ── Accounts ─────────────────────────────────────────────────────────────────
+// Optional — a trip can be planned and shared via URL with no account at all.
+// Logging in only attaches trips to a "My Trips" list for cross-device access.
+
+model User {
+  id           String               @id @default(cuid())
+  email        String               @unique
+  passwordHash String
+  createdAt    DateTime             @default(now())
+  trips        Trip[]
+  resetTokens  PasswordResetToken[]
+}
+
+// Deleting a User cascades this (a stale outstanding reset link becomes
+// meaningless once the account is gone) but deliberately does NOT cascade
+// Trip — Trip.userId is onDelete: SetNull below, so account deletion erases
+// the account's identifying data (email, password hash) while a user's trip
+// *plans* survive as ordinary anonymous trips, same as if they'd never
+// logged in. Trip content (a city, some dates, a few place names) isn't
+// identifying on its own, and destroying someone's actual travel plans as a
+// side effect of deleting login credentials would be a worse outcome than
+// what it's meant to protect against.
+model PasswordResetToken {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+// ── Trips ────────────────────────────────────────────────────────────────────
+
+model Trip {
+  id          String     @id @default(cuid())
+  city        String
+  destination String
+  startDate   DateTime?
+  endDate     DateTime?
+  interests   String     @default("[]")
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  userId      String?
+  user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  items       TripItem[]
+}
+
+model TripItem {
+  id       String   @id @default(cuid())
+  tripId   String
+  trip     Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  placeId  String
+  place    Place    @relation(fields: [placeId], references: [id])
+  dayIndex Int      @default(1)
+  addedAt  DateTime @default(now())
+
+  @@unique([tripId, placeId])
+}
+
+// ── Checklist ────────────────────────────────────────────────────────────────
+// Static, templated content — deliberately outside the freshness pipeline,
+// since none of it needs live verification.
+
+model ChecklistTemplateItem {
+  id    String @id @default(cuid())
+  phase String
+  label String
+  order Int    @default(0)
+}
+
+model ChecklistCheck {
+  id      String  @id @default(cuid())
+  tripId  String
+  itemKey String
+  checked Boolean @default(true)
+
+  @@unique([tripId, itemKey])
+}
