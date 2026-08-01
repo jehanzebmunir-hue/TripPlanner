@@ -13,6 +13,14 @@ export interface CityConfig {
    * that's the point — a city shouldn't need bespoke engineering to exist.
    */
   extraAdapters?: string[];
+  /**
+   * 1 = verified via real, corroborated international-arrivals data; 2 =
+   * unambiguous major world city by general knowledge, not a precise
+   * citation. Undefined = no claim either way, not "unimportant." Used to
+   * order the metered google-places refresh so real budget constraints (see
+   * scheduler.ts) hit the least-important cities first, not arbitrarily.
+   */
+  priorityTier?: 1 | 2;
 }
 
 export interface NormalizedRecord {
