@@ -135,12 +135,25 @@ export default function App() {
       {/* Required attribution for OpenStreetMap-sourced place data (ODbL) —
           a single blanket credit here, not per-card, matches how OSM data
           is normally attributed in an app rather than in a curated dataset. */}
-      <footer className="border-t border-line px-5 py-3 text-center font-mono text-[10px] uppercase tracking-wide text-ink-faint">
-        Place data ©{" "}
-        <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline">
-          OpenStreetMap
-        </a>{" "}
-        contributors
+      <footer className="space-y-1 border-t border-line px-5 py-3 text-center font-mono text-[10px] uppercase tracking-wide text-ink-faint">
+        <p>
+          Place data ©{" "}
+          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline">
+            OpenStreetMap
+          </a>{" "}
+          contributors
+        </p>
+        {/* Off by default -- no real support-link URL exists yet. Set
+            VITE_SUPPORT_URL at build time (Render env vars) once you've
+            picked a platform (Ko-fi, GitHub Sponsors, etc.) to turn this on;
+            nothing renders otherwise, never a placeholder/fake link. */}
+        {import.meta.env.VITE_SUPPORT_URL && (
+          <p>
+            <a href={import.meta.env.VITE_SUPPORT_URL} target="_blank" rel="noreferrer" className="underline">
+              Support this project
+            </a>
+          </p>
+        )}
       </footer>
     </div>
   );
