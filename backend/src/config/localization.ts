@@ -20,7 +20,7 @@ const CURRENCY_BY_COUNTRY: Record<string, string> = {
   IL: "ILS", JO: "JOD", NP: "NPR", SA: "SAR", QA: "QAR", UZ: "UZS", HR: "EUR",
   HU: "HUF", PF: "XPF", PH: "PHP", MT: "EUR", BW: "BWP", UY: "UYU", BB: "BBD",
   AW: "AWG", MV: "MVR", OM: "OMR", TN: "TND", MU: "MUR", SC: "SCR", MN: "MNT",
-  KZ: "KZT", RO: "RON", RS: "RSD",
+  KZ: "KZT", RO: "RON", RS: "RSD", BE: "EUR", MO: "MOP",
 };
 
 // IANA timezone per country — correct for every single-timezone country in
@@ -54,6 +54,7 @@ const TIMEZONE_BY_COUNTRY: Record<string, string> = {
   MV: "Indian/Maldives", OM: "Asia/Muscat", TN: "Africa/Tunis",
   MU: "Indian/Mauritius", SC: "Indian/Mahe", MN: "Asia/Ulaanbaatar",
   KZ: "Asia/Almaty", RO: "Europe/Bucharest", RS: "Europe/Belgrade",
+  BE: "Europe/Brussels", MO: "Asia/Macau",
 };
 
 // Multi-timezone countries (US, Canada, Mexico, Australia), plus a few

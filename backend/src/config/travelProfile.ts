@@ -176,6 +176,24 @@ export const TRAVEL_PROFILE_BY_SLUG: Record<string, TravelProfile> = {
   almaty: { budgetTier: "moderate", bestSeason: "May–Sep" },
   bucharest: { budgetTier: "budget", bestSeason: "May–Jun, Sep–Oct" },
   belgrade: { budgetTier: "budget", bestSeason: "Apr–Jun, Sep–Oct" },
+
+  // Fourth reach-expansion batch — see config/cities.ts for the coverage
+  // notes on this batch.
+  madrid: { budgetTier: "moderate", bestSeason: "Apr–Jun, Sep–Oct" },
+  milan: { budgetTier: "premium", bestSeason: "Apr–Jun, Sep–Oct" },
+  athens: { budgetTier: "moderate", bestSeason: "Apr–Jun, Sep–Oct" },
+  munich: { budgetTier: "premium", bestSeason: "May–Sep" },
+  warsaw: { budgetTier: "budget", bestSeason: "May–Sep" },
+  brussels: { budgetTier: "moderate", bestSeason: "Apr–Jun, Sep–Oct" },
+  geneva: { budgetTier: "premium", bestSeason: "Jun–Sep" },
+  marseille: { budgetTier: "moderate", bestSeason: "May–Jun, Sep–Oct" },
+  seville: { budgetTier: "moderate", bestSeason: "Mar–May, Sep–Oct" },
+  "valencia-es": { budgetTier: "moderate", bestSeason: "Mar–May, Sep–Oct" },
+  osaka: { budgetTier: "moderate", bestSeason: "Mar–May, Oct–Nov" },
+  macau: { budgetTier: "premium", bestSeason: "Oct–Dec" },
+  antalya: { budgetTier: "budget", bestSeason: "Apr–Jun, Sep–Oct" },
+  phuket: { budgetTier: "moderate", bestSeason: "Nov–Mar" },
+  casablanca: { budgetTier: "moderate", bestSeason: "Mar–May, Sep–Nov" },
 };
 
 export function getTravelProfile(slug: string): TravelProfile {
