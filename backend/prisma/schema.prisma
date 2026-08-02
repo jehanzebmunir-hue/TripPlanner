@@ -90,6 +90,33 @@ model ExchangeRateCache {
   @@id([fromCurrency, toCurrency, date])
 }
 
+// A place resolved on demand via OpenStreetMap's Nominatim geocoder when a
+// requested city isn't in the curated config/cities.ts registry -- cached
+// here permanently so the same real place is only ever geocoded once, not
+// re-fetched from Nominatim on every later search or ensureCityFresh call.
+// slug is the primary key (not a separate cuid) since it's also the exact
+// string every Place/Trip/TripLeg row keys off of for this city -- see
+// services/cityResolution.service.ts.
+model ResolvedCity {
+  slug      String   @id
+  name      String
+  country   String
+  lat       Float
+  lng       Float
+  timezone  String
+  currency  String
+  // Every raw search query (lowercased) that has ever resolved to this row.
+  // Necessary because Nominatim's own "name" field is the local name, not
+  // necessarily what an English-speaking traveler types -- caught live:
+  // searching "Bruges" resolves and caches a row named "Brugge, Belgium"
+  // (its real Dutch name), and a plain name-contains lookup on a *second*
+  // search for "Bruges" would silently miss its own cached result. Matching
+  // against aliases too means the exact query that found it once will find
+  // it again, without re-geocoding.
+  aliases   String[] @default([])
+  createdAt DateTime @default(now())
+}
+
 model Confirmation {
   id        String   @id @default(cuid())
   placeId   String

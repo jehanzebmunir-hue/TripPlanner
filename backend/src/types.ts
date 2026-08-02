@@ -28,6 +28,14 @@ export interface CityConfig {
    * latency — everything else is ingested purely on demand.
    */
   priorityTier?: 1 | 2;
+  /**
+   * True only for a city resolved on demand via Nominatim rather than
+   * present in config/cities.ts (see services/cityResolution.service.ts).
+   * Gates adaptersForCity down to overpass only -- no seed data exists for
+   * it, and ticketmasterMarket/seatgeekVenueCity are never set for a
+   * resolved city (auto-guessing one risks matching the wrong real market).
+   */
+  resolved?: boolean;
 }
 
 export interface NormalizedRecord {

@@ -36,6 +36,13 @@ export const DEFAULT_ADAPTERS = ["seed", "overpass", "ticketmaster", "seatgeek"]
 // major cities), so the budget concentrates on the cities most likely to
 // actually be visited, instead of one thin layer over all 144.
 export function adaptersForCity(city: CityConfig): string[] {
+  // A resolved (not curated) city has no seed data and no hand-verified
+  // Ticketmaster/SeatGeek market string -- overpass is the only adapter
+  // that works for literally any coordinates with zero per-city setup, so
+  // it's the only one that runs. Honest degradation (no ticketed-event
+  // data) rather than guessing a market match that could easily be wrong.
+  if (city.resolved) return ["overpass"];
+
   const base = city.priorityTier != null ? [...DEFAULT_ADAPTERS, "google-places"] : DEFAULT_ADAPTERS;
   return [...base, ...(city.extraAdapters ?? [])];
 }

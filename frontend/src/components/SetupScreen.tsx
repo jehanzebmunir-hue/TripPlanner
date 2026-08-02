@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { CATEGORIES } from "../categories";
 import { useCities, useCreateTrip } from "../hooks";
 import { CitySummary, CreatedTrip } from "../types";
+import { CitySearchPanel } from "./CitySearchPanel";
 import { FindDestinationPanel } from "./FindDestinationPanel";
 
 interface Props {
@@ -141,12 +142,33 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
   const [endDate, setEndDate] = useState("2026-10-11");
   const [homeCurrency, setHomeCurrency] = useState("USD");
   const [legs, setLegs] = useState<LegDraft[]>([]);
+  // A city picked via CitySearchPanel or FindDestinationPanel might not be
+  // in the (possibly stale-cached) bulk /api/cities list yet -- keyed here
+  // so the dropdown and handleSubmit's lookups always have a real name for
+  // it, without needing a refetch just to display what was just picked.
+  const [pickedCities, setPickedCities] = useState<Record<string, CitySummary>>({});
   const createTrip = useCreateTrip();
-  const cityGroups = useMemo(() => groupByCountry(cities ?? []), [cities]);
+  const allKnownCities = useMemo(() => {
+    const map = new Map<string, CitySummary>();
+    (cities ?? []).forEach((c) => map.set(c.slug, c));
+    Object.values(pickedCities).forEach((c) => map.set(c.slug, c));
+    return Array.from(map.values());
+  }, [cities, pickedCities]);
+  const cityGroups = useMemo(() => groupByCountry(allKnownCities), [allKnownCities]);
 
   useEffect(() => {
     if (!city && cities && cities.length > 0) setCity(cities[0].slug);
   }, [cities, city]);
+
+  function handlePick(c: CitySummary) {
+    setPickedCities((prev) => ({ ...prev, [c.slug]: c }));
+    setCity(c.slug);
+  }
+
+  function handleLegPick(index: number, c: CitySummary) {
+    setPickedCities((prev) => ({ ...prev, [c.slug]: c }));
+    updateLeg(index, { city: c.slug });
+  }
 
   function toggle(slug: string) {
     onInterestsChange(interests.includes(slug) ? interests.filter((i) => i !== slug) : [...interests, slug]);
@@ -169,10 +191,10 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
   }
 
   function handleSubmit() {
-    const destination = cities?.find((c) => c.slug === city)?.name ?? city;
+    const destination = allKnownCities.find((c) => c.slug === city)?.name ?? city;
     const legInputs = legs.map((leg) => ({
       city: leg.city,
-      destination: cities?.find((c) => c.slug === leg.city)?.name ?? leg.city,
+      destination: allKnownCities.find((c) => c.slug === leg.city)?.name ?? leg.city,
       startDate: leg.startDate,
       endDate: leg.endDate,
     }));
@@ -210,6 +232,9 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
           ))}
         </select>
         <FindDestinationPanel onPick={setCity} />
+        <div className="mt-2">
+          <CitySearchPanel onPick={handlePick} />
+        </div>
       </div>
 
       <div>
@@ -262,6 +287,9 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
                 </optgroup>
               ))}
             </select>
+            <div className="mb-2">
+              <CitySearchPanel onPick={(c) => handleLegPick(i, c)} />
+            </div>
             <div className="flex gap-2.5">
               <input
                 type="date"

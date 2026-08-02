@@ -1,19 +1,17 @@
 import { Router } from "express";
-import { CITIES } from "../config/cities";
-import { getCurrency, getTimezone } from "../config/localization";
+import { listAllCities, searchCities } from "../services/cityResolution.service";
 
 const router = Router();
 
-router.get("/", (_req, res) => {
-  res.json(
-    CITIES.map((city) => ({
-      slug: city.slug,
-      name: city.name,
-      country: city.country,
-      currency: getCurrency(city),
-      timezone: getTimezone(city),
-    }))
-  );
+router.get("/", async (_req, res) => {
+  res.json(await listAllCities());
+});
+
+// Registry-first, then previously-resolved cities, live Nominatim geocoding
+// only as a last resort -- see cityResolution.service.ts's searchCities.
+router.get("/search", async (req, res) => {
+  const q = typeof req.query.q === "string" ? req.query.q : "";
+  res.json(await searchCities(q));
 });
 
 export default router;

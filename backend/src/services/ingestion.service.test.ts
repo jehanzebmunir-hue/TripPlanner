@@ -4,6 +4,7 @@ const upsert = vi.fn().mockResolvedValue(undefined);
 const healthUpsert = vi.fn().mockResolvedValue(undefined);
 const healthFindMany = vi.fn().mockResolvedValue([]);
 const placeFindMany = vi.fn().mockResolvedValue([]);
+const resolvedCityFindUnique = vi.fn().mockResolvedValue(null);
 
 vi.mock("../lib/prisma", () => ({
   prisma: {
@@ -15,10 +16,14 @@ vi.mock("../lib/prisma", () => ({
       upsert: (...args: unknown[]) => healthUpsert(...args),
       findMany: (...args: unknown[]) => healthFindMany(...args),
     },
+    resolvedCity: {
+      findUnique: (...args: unknown[]) => resolvedCityFindUnique(...args),
+    },
   },
 }));
 
 vi.mock("../config/cities", () => ({
+  CITIES: [],
   getCity: (slug: string) =>
     slug === "testville" ? { slug: "testville", name: "Testville", country: "US" } : undefined,
 }));
@@ -51,11 +56,31 @@ describe("ingestCity", () => {
     placeFindMany.mockResolvedValue([]);
     overpassAdapter.run.mockClear();
     overpassAdapter.run.mockResolvedValue([]);
+    resolvedCityFindUnique.mockClear();
+    resolvedCityFindUnique.mockResolvedValue(null);
   });
 
   it("throws on an unknown city rather than silently ingesting nothing", async () => {
     const { ingestCity } = await import("./ingestion.service");
     await expect(ingestCity("nowhere")).rejects.toThrow(/Unknown city/);
+  });
+
+  it("falls back to a Nominatim-resolved city when the curated registry doesn't have it", async () => {
+    resolvedCityFindUnique.mockResolvedValue({
+      slug: "resolvedville",
+      name: "Resolvedville, XX",
+      country: "XX",
+      lat: 1,
+      lng: 2,
+      timezone: "UTC",
+      currency: "USD",
+    });
+    const { ingestCity } = await import("./ingestion.service");
+
+    const result = await ingestCity("resolvedville");
+
+    expect(resolvedCityFindUnique).toHaveBeenCalledWith({ where: { slug: "resolvedville" } });
+    expect(result.working).toEqual({ count: 1, ok: true });
   });
 
   it("marks a real empty result ok: true, distinct from a thrown error", async () => {
@@ -167,12 +192,32 @@ describe("ensureCityFresh", () => {
     brokenAdapter.run.mockClear();
     overpassAdapter.run.mockClear();
     overpassAdapter.run.mockResolvedValue([]);
+    resolvedCityFindUnique.mockClear();
+    resolvedCityFindUnique.mockResolvedValue(null);
   });
 
-  it("no-ops for an unregistered city rather than throwing", async () => {
+  it("no-ops for an unregistered, never-resolved city rather than throwing", async () => {
     const { ensureCityFresh } = await import("./ingestion.service");
     await expect(ensureCityFresh("nowhere")).resolves.toBeUndefined();
     expect(healthFindMany).not.toHaveBeenCalled();
+  });
+
+  it("fetches a Nominatim-resolved city not in the curated registry", async () => {
+    resolvedCityFindUnique.mockResolvedValue({
+      slug: "resolvedville",
+      name: "Resolvedville, XX",
+      country: "XX",
+      lat: 1,
+      lng: 2,
+      timezone: "UTC",
+      currency: "USD",
+    });
+    healthFindMany.mockResolvedValue([]);
+    const { ensureCityFresh } = await import("./ingestion.service");
+
+    await ensureCityFresh("resolvedville");
+
+    expect(workingAdapter.run).toHaveBeenCalledTimes(1);
   });
 
   it("fetches every default adapter for a never-before-ingested city", async () => {

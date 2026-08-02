@@ -31,4 +31,10 @@ describe("adaptersForCity", () => {
   it("treats priorityTier 2 the same as priorityTier 1", () => {
     expect(adaptersForCity(city({ priorityTier: 2 }))).toContain("google-places");
   });
+
+  it("restricts a resolved (Nominatim-geocoded) city to overpass only, regardless of other fields", () => {
+    const adapters = adaptersForCity(city({ resolved: true, priorityTier: 1, extraAdapters: ["boston-events"] }));
+
+    expect(adapters).toEqual(["overpass"]);
+  });
 });

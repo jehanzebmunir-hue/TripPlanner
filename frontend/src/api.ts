@@ -102,6 +102,7 @@ export const api = {
   deleteTrip: (tripId: string) => request(`/trips/${tripId}`, { method: "DELETE" }),
 
   listCities: () => request<CitySummary[]>(`/cities`),
+  searchCities: (query: string) => request<CitySummary[]>(`/cities/search?q=${encodeURIComponent(query)}`),
   getCityHealth: (city: string) => request<CityAdapterHealth[]>(`/city-health?city=${encodeURIComponent(city)}`),
   listVibes: () => request<VibeOption[]>(`/recommend-destination/vibes`),
   recommendDestinations: (vibeSlug?: string, budgetTier?: BudgetTier) => {

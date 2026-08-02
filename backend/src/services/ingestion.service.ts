@@ -3,6 +3,15 @@ import { CITIES, getCity } from "../config/cities";
 import { ADAPTERS, adaptersForCity } from "../adapters";
 import { ADAPTER_TIER, REFRESH_MS } from "../config/adapterCadence";
 import { isLikelyDuplicate } from "../lib/dedup";
+import { resolveCity } from "./cityResolution.service";
+import { CityConfig } from "../types";
+
+// The curated registry is checked first (fast, no DB round-trip) -- a slug
+// only ever falls through to resolveCity's DB lookup when it isn't there,
+// so every existing registered city keeps its exact current lookup cost.
+async function findCity(citySlug: string): Promise<CityConfig | undefined> {
+  return getCity(citySlug) ?? (await resolveCity(citySlug));
+}
 
 export interface AdapterOutcome {
   count: number;
@@ -36,7 +45,7 @@ export async function ingestCity(
   citySlug: string,
   adapterFilter?: string[]
 ): Promise<Record<string, AdapterOutcome>> {
-  const city = getCity(citySlug);
+  const city = await findCity(citySlug);
   if (!city) throw new Error(`Unknown city: ${citySlug}`);
 
   const results: Record<string, AdapterOutcome> = {};
@@ -144,8 +153,8 @@ const inFlight = new Map<string, Promise<void>>();
  * regardless of whether anyone's asked for it.
  */
 export async function ensureCityFresh(citySlug: string): Promise<void> {
-  const city = getCity(citySlug);
-  if (!city) return; // unregistered city — nothing to fetch, listPlaces will just see no rows
+  const city = await findCity(citySlug);
+  if (!city) return; // unregistered and never resolved — nothing to fetch, listPlaces will just see no rows
 
   const existing = inFlight.get(citySlug);
   if (existing) return existing;

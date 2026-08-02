@@ -117,6 +117,10 @@ export interface CitySummary {
   country: string;
   currency: string;
   timezone: string;
+  // "curated" = config/cities.ts, hand-verified. "community" = resolved on
+  // demand from real OpenStreetMap data only, via /api/cities/search.
+  // Absent on older cached responses -- treat as curated.
+  dataSource?: "curated" | "community";
 }
 
 export interface TripSummary {

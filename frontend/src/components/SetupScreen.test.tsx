@@ -7,12 +7,14 @@ import { SetupScreen } from "./SetupScreen";
 const listCities = vi.fn();
 const createTrip = vi.fn();
 const listVibes = vi.fn();
+const searchCities = vi.fn();
 
 vi.mock("../api", () => ({
   api: {
     listCities: (...args: unknown[]) => listCities(...args),
     createTrip: (...args: unknown[]) => createTrip(...args),
     listVibes: (...args: unknown[]) => listVibes(...args),
+    searchCities: (...args: unknown[]) => searchCities(...args),
     recommendDestinations: vi.fn().mockResolvedValue([]),
   },
 }));
@@ -134,5 +136,53 @@ describe("SetupScreen", () => {
 
     expect(screen.getByText(/not sure yet\? find a destination/i)).toBeInTheDocument();
     expect(screen.queryByText(/find a destination$/i, { selector: "h3" })).not.toBeInTheDocument();
+  });
+
+  it("shows the free-text city search link collapsed by default", async () => {
+    listCities.mockResolvedValue(CITIES);
+    listVibes.mockResolvedValue([]);
+
+    renderWithClient(<SetupScreen interests={[]} onInterestsChange={vi.fn()} onCreated={vi.fn()} />);
+
+    expect(screen.getByText(/not on the list\? search any place/i)).toBeInTheDocument();
+  });
+
+  it("picks a resolved (non-curated) city via search and submits it correctly", async () => {
+    listCities.mockResolvedValue(CITIES);
+    listVibes.mockResolvedValue([]);
+    searchCities.mockResolvedValue([
+      {
+        slug: "hallstatt-at",
+        name: "Hallstatt, Austria",
+        country: "AT",
+        currency: "EUR",
+        timezone: "Europe/Vienna",
+        dataSource: "community",
+      },
+    ]);
+    createTrip.mockResolvedValue({ id: "trip1", city: "hallstatt-at", destination: "Hallstatt, Austria", items: [] });
+    const user = userEvent.setup();
+
+    renderWithClient(<SetupScreen interests={[]} onInterestsChange={vi.fn()} onCreated={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Destination" })).toHaveValue("nyc"));
+    await user.click(screen.getByText(/not on the list\? search any place/i));
+    await user.type(screen.getByLabelText("Search any place"), "Hallstatt");
+
+    await waitFor(() => expect(screen.getByText("Hallstatt, Austria")).toBeInTheDocument());
+    await user.click(screen.getByText("Hallstatt, Austria"));
+
+    // The dropdown must reflect the pick even though this city was never in
+    // the bulk /api/cities list this render fetched -- it's merged in
+    // locally from what was just picked, not lost.
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Destination" })).toHaveValue("hallstatt-at"));
+
+    await user.click(screen.getByRole("button", { name: /see everything/i }));
+
+    await waitFor(() => expect(createTrip).toHaveBeenCalled());
+    const lastCall = createTrip.mock.calls[createTrip.mock.calls.length - 1];
+    expect(lastCall[0]).toEqual(
+      expect.objectContaining({ city: "hallstatt-at", destination: "Hallstatt, Austria" })
+    );
   });
 });
