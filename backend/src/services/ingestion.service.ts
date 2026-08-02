@@ -2,6 +2,7 @@ import { prisma } from "../lib/prisma";
 import { CITIES, getCity } from "../config/cities";
 import { ADAPTERS, adaptersForCity } from "../adapters";
 import { ADAPTER_TIER, REFRESH_MS } from "../config/adapterCadence";
+import { isLikelyDuplicate } from "../lib/dedup";
 
 export interface AdapterOutcome {
   count: number;
@@ -58,7 +59,26 @@ export async function ingestCity(
     }
     await recordAdapterHealth(city.slug, adapterName, true);
 
+    // overpass runs alongside google-places for priority-tier cities, and
+    // both can independently surface the same real landmark -- confirmed
+    // live (Brussels' "Manneken Pis" from both sources, 1m apart). Checked
+    // only for overpass (the source added second, and the lower-curation
+    // one of the two) against everything already in the DB for this city,
+    // not just this run's own records.
+    let existingForDedup: { name: string; lat: number | null; lng: number | null }[] = [];
+    if (adapterName === "overpass" && records.length > 0) {
+      existingForDedup = await prisma.place.findMany({
+        where: { city: city.slug, source: { not: "overpass" } },
+        select: { name: true, lat: true, lng: true },
+      });
+    }
+
+    let skippedAsDuplicate = 0;
     for (const r of records) {
+      if (existingForDedup.length > 0 && existingForDedup.some((e) => isLikelyDuplicate(e, r))) {
+        skippedAsDuplicate++;
+        continue;
+      }
       const lastVerifiedAt = r.verifiedAt ?? new Date();
       await prisma.place.upsert({
         where: {
@@ -98,7 +118,10 @@ export async function ingestCity(
       });
     }
 
-    results[adapterName] = { count: records.length, ok: true };
+    if (skippedAsDuplicate > 0) {
+      console.log(`[ingest] ${city.slug}/overpass: skipped ${skippedAsDuplicate} likely duplicate(s) of existing places`);
+    }
+    results[adapterName] = { count: records.length - skippedAsDuplicate, ok: true };
   }
 
   return results;

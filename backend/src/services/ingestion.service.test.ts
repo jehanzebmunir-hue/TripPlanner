@@ -3,10 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const upsert = vi.fn().mockResolvedValue(undefined);
 const healthUpsert = vi.fn().mockResolvedValue(undefined);
 const healthFindMany = vi.fn().mockResolvedValue([]);
+const placeFindMany = vi.fn().mockResolvedValue([]);
 
 vi.mock("../lib/prisma", () => ({
   prisma: {
-    place: { upsert: (...args: unknown[]) => upsert(...args) },
+    place: {
+      upsert: (...args: unknown[]) => upsert(...args),
+      findMany: (...args: unknown[]) => placeFindMany(...args),
+    },
     adapterHealth: {
       upsert: (...args: unknown[]) => healthUpsert(...args),
       findMany: (...args: unknown[]) => healthFindMany(...args),
@@ -25,10 +29,17 @@ const workingAdapter = {
 };
 const emptyAdapter = { name: "empty", run: vi.fn().mockResolvedValue([]) };
 const brokenAdapter = { name: "broken", run: vi.fn().mockRejectedValue(new Error("upstream 500")) };
+const overpassAdapter = { name: "overpass", run: vi.fn().mockResolvedValue([]) };
 
 vi.mock("../adapters", () => ({
-  ADAPTERS: { working: workingAdapter, empty: emptyAdapter, broken: brokenAdapter },
-  adaptersForCity: (city: { extraAdapters?: string[] }) => ["working", "empty", "broken", ...(city.extraAdapters ?? [])],
+  ADAPTERS: { working: workingAdapter, empty: emptyAdapter, broken: brokenAdapter, overpass: overpassAdapter },
+  adaptersForCity: (city: { extraAdapters?: string[] }) => [
+    "working",
+    "empty",
+    "broken",
+    "overpass",
+    ...(city.extraAdapters ?? []),
+  ],
 }));
 
 describe("ingestCity", () => {
@@ -36,6 +47,10 @@ describe("ingestCity", () => {
     upsert.mockClear();
     healthUpsert.mockClear();
     healthFindMany.mockClear();
+    placeFindMany.mockClear();
+    placeFindMany.mockResolvedValue([]);
+    overpassAdapter.run.mockClear();
+    overpassAdapter.run.mockResolvedValue([]);
   });
 
   it("throws on an unknown city rather than silently ingesting nothing", async () => {
@@ -83,7 +98,7 @@ describe("ingestCity", () => {
     const { ingestCity } = await import("./ingestion.service");
     await ingestCity("testville");
 
-    expect(healthUpsert).toHaveBeenCalledTimes(3); // working, empty, broken
+    expect(healthUpsert).toHaveBeenCalledTimes(4); // working, empty, broken, overpass
     const brokenCall = healthUpsert.mock.calls.find(
       (c) => (c[0] as { where: { city_adapter: { adapter: string } } }).where.city_adapter.adapter === "broken"
     )?.[0] as { create: { consecutiveFailures: number; lastError: string } };
@@ -95,6 +110,35 @@ describe("ingestCity", () => {
     )?.[0] as { create: { consecutiveFailures: number; lastSuccessAt: Date | null } };
     expect(workingCall.create.consecutiveFailures).toBe(0);
     expect(workingCall.create.lastSuccessAt).not.toBeNull();
+  });
+
+  it("skips an overpass record that's a likely duplicate of an already-existing place, and doesn't upsert it", async () => {
+    placeFindMany.mockResolvedValue([{ name: "Manneken Pis", lat: 50.8449, lng: 4.3499 }]);
+    overpassAdapter.run.mockResolvedValue([
+      { externalId: "osm1", category: "sightseeing-culture", tier: "static", name: "Manneken Pis", lat: 50.84491, lng: 4.34991 },
+    ]);
+    const { ingestCity } = await import("./ingestion.service");
+
+    const result = await ingestCity("testville", ["overpass"]);
+
+    expect(placeFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { city: "testville", source: { not: "overpass" } } })
+    );
+    expect(upsert).not.toHaveBeenCalled();
+    expect(result.overpass).toEqual({ count: 0, ok: true });
+  });
+
+  it("still upserts a genuinely distinct overpass record even when other places exist in the city", async () => {
+    placeFindMany.mockResolvedValue([{ name: "Manneken Pis", lat: 50.8449, lng: 4.3499 }]);
+    overpassAdapter.run.mockResolvedValue([
+      { externalId: "osm2", category: "sightseeing-culture", tier: "static", name: "Atomium", lat: 50.8949, lng: 4.3414 },
+    ]);
+    const { ingestCity } = await import("./ingestion.service");
+
+    const result = await ingestCity("testville", ["overpass"]);
+
+    expect(upsert).toHaveBeenCalledTimes(1);
+    expect(result.overpass).toEqual({ count: 1, ok: true });
   });
 
   it("getCityHealth reports degraded: true only for adapters with at least one consecutive failure", async () => {
@@ -116,9 +160,13 @@ describe("ensureCityFresh", () => {
     upsert.mockClear();
     healthUpsert.mockClear();
     healthFindMany.mockClear();
+    placeFindMany.mockClear();
+    placeFindMany.mockResolvedValue([]);
     workingAdapter.run.mockClear();
     emptyAdapter.run.mockClear();
     brokenAdapter.run.mockClear();
+    overpassAdapter.run.mockClear();
+    overpassAdapter.run.mockResolvedValue([]);
   });
 
   it("no-ops for an unregistered city rather than throwing", async () => {
