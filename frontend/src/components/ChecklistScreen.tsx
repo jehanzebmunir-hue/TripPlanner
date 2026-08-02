@@ -1,22 +1,27 @@
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { api } from "../api";
 import { useChecklist, useToggleChecklistItem } from "../hooks";
 import { ChecklistEntry } from "../types";
 
+// Compared against the backend's own (English-only -- see i18n scope note
+// in README) checklist template text to find this one special item, not
+// user-facing itself.
 const OFFLINE_SAVE_LABEL = "Save this itinerary for offline access";
 
 export function ChecklistScreen({ tripId, city }: { tripId: string; city: string }) {
+  const { t } = useTranslation();
   const { data, isLoading } = useChecklist(tripId);
   const toggle = useToggleChecklistItem(tripId);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  if (isLoading || !data) return <p className="text-sm text-ink-soft">Loading…</p>;
+  if (isLoading || !data) return <p className="text-sm text-ink-soft">{t("common.loading")}</p>;
 
   const groups: { title: string; items: ChecklistEntry[] }[] = [
-    { title: "From your itinerary", items: data.fromItinerary },
-    { title: "Weeks out", items: data.weeksOut },
-    { title: "Day of departure", items: data.dayOf },
+    { title: t("checklist.fromItinerary"), items: data.fromItinerary },
+    { title: t("checklist.weeksOut"), items: data.weeksOut },
+    { title: t("checklist.dayOf"), items: data.dayOf },
   ];
 
   async function saveForOffline(itemKey: string) {
@@ -32,12 +37,12 @@ export function ChecklistScreen({ tripId, city }: { tripId: string; city: string
 
   return (
     <div className="space-y-6">
-      <p className="text-sm text-ink-soft">Booking items from your itinerary, plus a generic prep timeline.</p>
+      <p className="text-sm text-ink-soft">{t("checklist.subheading")}</p>
 
       {groups.map((g) => (
         <div key={g.title}>
           <h3 className="mb-2 font-mono text-[11px] uppercase tracking-wide text-ink-faint">{g.title}</h3>
-          {g.items.length === 0 && <p className="text-xs text-ink-faint">Nothing here yet.</p>}
+          {g.items.length === 0 && <p className="text-xs text-ink-faint">{t("checklist.nothingHere")}</p>}
           {g.items.map((item) =>
             item.label === OFFLINE_SAVE_LABEL ? (
               <div key={item.id} className="flex items-start justify-between gap-2.5 border-t border-line py-2.5 last:border-b">
@@ -50,7 +55,7 @@ export function ChecklistScreen({ tripId, city }: { tripId: string; city: string
                   disabled={saving}
                   className="shrink-0 border border-accent px-2.5 py-1 text-xs font-semibold text-accent disabled:opacity-60"
                 >
-                  {saving ? "Saving…" : saved || item.checked ? "Saved ✓" : "Save now"}
+                  {saving ? t("checklist.saving") : saved || item.checked ? t("checklist.saved") : t("checklist.saveNow")}
                 </button>
               </div>
             ) : (

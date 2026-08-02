@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { CATEGORIES } from "../categories";
 import { useCities, useCreateTrip } from "../hooks";
 import { CitySummary, CreatedTrip } from "../types";
@@ -10,105 +11,6 @@ interface Props {
   onInterestsChange: (interests: string[]) => void;
   onCreated: (trip: CreatedTrip) => void;
 }
-
-const COUNTRY_NAMES: Record<string, string> = {
-  US: "United States",
-  CA: "Canada",
-  MX: "Mexico",
-  BR: "Brazil",
-  AR: "Argentina",
-  PE: "Peru",
-  CL: "Chile",
-  CO: "Colombia",
-  CR: "Costa Rica",
-  ZA: "South Africa",
-  KE: "Kenya",
-  EG: "Egypt",
-  MA: "Morocco",
-  AU: "Australia",
-  GB: "United Kingdom",
-  FR: "France",
-  IT: "Italy",
-  ES: "Spain",
-  NL: "Netherlands",
-  DE: "Germany",
-  JP: "Japan",
-  KR: "South Korea",
-  SG: "Singapore",
-  TH: "Thailand",
-  TW: "Taiwan",
-  AE: "United Arab Emirates",
-  PA: "Panama",
-  NG: "Nigeria",
-  NZ: "New Zealand",
-  AT: "Austria",
-  CZ: "Czech Republic",
-  PT: "Portugal",
-  TR: "Turkey",
-  HK: "Hong Kong",
-  MY: "Malaysia",
-  IN: "India",
-  EC: "Ecuador",
-  GT: "Guatemala",
-  TZ: "Tanzania",
-  ZM: "Zambia",
-  FJ: "Fiji",
-  GR: "Greece",
-  IS: "Iceland",
-  IE: "Ireland",
-  ID: "Indonesia",
-  VN: "Vietnam",
-  BZ: "Belize",
-  RW: "Rwanda",
-  NA: "Namibia",
-  GE: "Georgia",
-  SI: "Slovenia",
-  PL: "Poland",
-  KH: "Cambodia",
-  LK: "Sri Lanka",
-  CN: "China",
-  BO: "Bolivia",
-  ET: "Ethiopia",
-  UG: "Uganda",
-  FO: "Faroe Islands",
-  NO: "Norway",
-  LA: "Laos",
-  BT: "Bhutan",
-  PR: "Puerto Rico",
-  DO: "Dominican Republic",
-  JM: "Jamaica",
-  BS: "Bahamas",
-  SE: "Sweden",
-  DK: "Denmark",
-  FI: "Finland",
-  CH: "Switzerland",
-  IL: "Israel",
-  JO: "Jordan",
-  NP: "Nepal",
-  SA: "Saudi Arabia",
-  QA: "Qatar",
-  UZ: "Uzbekistan",
-  HR: "Croatia",
-  HU: "Hungary",
-  PF: "French Polynesia",
-  PH: "Philippines",
-  MT: "Malta",
-  BW: "Botswana",
-  UY: "Uruguay",
-  BB: "Barbados",
-  AW: "Aruba",
-  MV: "Maldives",
-  OM: "Oman",
-  TN: "Tunisia",
-  MU: "Mauritius",
-  SC: "Seychelles",
-  MN: "Mongolia",
-  KZ: "Kazakhstan",
-  RO: "Romania",
-  RS: "Serbia",
-  BE: "Belgium",
-  MO: "Macau",
-};
 
 // A practical set of major world currencies for "what do you spend in
 // day-to-day" -- not an exhaustive ISO 4217 list, and deliberately not tied
@@ -135,7 +37,21 @@ interface LegDraft {
   endDate: string;
 }
 
+// Real, complete, and automatically localized -- replaced a hand-maintained
+// ~97-entry English-only country name map that was already missing several
+// registry countries. Intl.DisplayNames is a standard ECMA-402 API, not an
+// extra dependency, and follows i18n.language automatically so "FR" reads
+// "France" in English and "Francia" in Spanish with zero translation work.
+function countryName(code: string, locale: string): string {
+  try {
+    return new Intl.DisplayNames([locale], { type: "region" }).of(code) ?? code;
+  } catch {
+    return code;
+  }
+}
+
 export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) {
+  const { t, i18n } = useTranslation();
   const { data: cities } = useCities();
   const [city, setCity] = useState("");
   const [startDate, setStartDate] = useState("2026-10-09");
@@ -207,22 +123,22 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="mb-1 font-serif text-xl">Plan the trip</h2>
-        <p className="text-sm text-ink-soft">Set the basics — Discover tunes itself to this.</p>
+        <h2 className="mb-1 font-serif text-xl">{t("setup.heading")}</h2>
+        <p className="text-sm text-ink-soft">{t("setup.subheading")}</p>
       </div>
 
       <div>
         <label className="mb-2 block font-mono text-[11px] uppercase tracking-wide text-ink-faint">
-          Destination
+          {t("setup.destination")}
         </label>
         <select
           value={city}
           onChange={(e) => setCity(e.target.value)}
-          aria-label="Destination"
+          aria-label={t("setup.destination")}
           className="mb-2 w-full border border-line bg-paper-raised px-3 py-2.5 text-sm"
         >
           {cityGroups.map(([country, group]) => (
-            <optgroup key={country} label={COUNTRY_NAMES[country] ?? country}>
+            <optgroup key={country} label={countryName(country, i18n.language)}>
               {group.map((c) => (
                 <option key={c.slug} value={c.slug}>
                   {c.name}
@@ -238,7 +154,7 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
       </div>
 
       <div>
-        <label className="mb-2 block font-mono text-[11px] uppercase tracking-wide text-ink-faint">Dates</label>
+        <label className="mb-2 block font-mono text-[11px] uppercase tracking-wide text-ink-faint">{t("setup.dates")}</label>
         <div className="flex gap-2.5">
           <input
             type="date"
@@ -260,25 +176,25 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
           <div key={i} className="mb-2.5 border border-line bg-paper-raised p-3">
             <div className="mb-2 flex items-center justify-between">
               <span className="font-mono text-[11px] uppercase tracking-wide text-ink-faint">
-                Also visiting
+                {t("setup.alsoVisiting")}
               </span>
               <button
                 type="button"
                 onClick={() => removeLeg(i)}
-                aria-label={`Remove city ${i + 2}`}
+                aria-label={t("setup.removeCity", { n: i + 2 })}
                 className="font-mono text-[11px] text-ink-faint underline"
               >
-                Remove
+                {t("setup.remove")}
               </button>
             </div>
             <select
               value={leg.city}
               onChange={(e) => updateLeg(i, { city: e.target.value })}
-              aria-label={`City ${i + 2}`}
+              aria-label={t("setup.cityN", { n: i + 2 })}
               className="mb-2 w-full border border-line bg-paper px-3 py-2 text-sm"
             >
               {cityGroups.map(([country, group]) => (
-                <optgroup key={country} label={COUNTRY_NAMES[country] ?? country}>
+                <optgroup key={country} label={countryName(country, i18n.language)}>
                   {group.map((c) => (
                     <option key={c.slug} value={c.slug}>
                       {c.name}
@@ -295,14 +211,14 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
                 type="date"
                 value={leg.startDate}
                 onChange={(e) => updateLeg(i, { startDate: e.target.value })}
-                aria-label={`City ${i + 2} start date`}
+                aria-label={t("setup.cityNStartDate", { n: i + 2 })}
                 className="flex-1 border border-line bg-paper px-3 py-2 font-mono text-[13px]"
               />
               <input
                 type="date"
                 value={leg.endDate}
                 onChange={(e) => updateLeg(i, { endDate: e.target.value })}
-                aria-label={`City ${i + 2} end date`}
+                aria-label={t("setup.cityNEndDate", { n: i + 2 })}
                 className="flex-1 border border-line bg-paper px-3 py-2 font-mono text-[13px]"
               />
             </div>
@@ -313,18 +229,18 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
           onClick={addLeg}
           className="w-full border border-dashed border-line py-2 text-xs font-semibold text-ink-soft"
         >
-          + Add another city
+          {t("setup.addAnotherCity")}
         </button>
       </div>
 
       <div>
         <label className="mb-2 block font-mono text-[11px] uppercase tracking-wide text-ink-faint">
-          Your currency <span className="normal-case text-ink-faint">— prices show a converted estimate too</span>
+          {t("setup.yourCurrency")} <span className="normal-case text-ink-faint">{t("setup.yourCurrencyHint")}</span>
         </label>
         <select
           value={homeCurrency}
           onChange={(e) => setHomeCurrency(e.target.value)}
-          aria-label="Your currency"
+          aria-label={t("setup.yourCurrency")}
           className="w-full border border-line bg-paper-raised px-3 py-2.5 text-sm"
         >
           {HOME_CURRENCIES.map((c) => (
@@ -337,7 +253,7 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
 
       <div>
         <label className="mb-2 block font-mono text-[11px] uppercase tracking-wide text-ink-faint">
-          Interests <span className="normal-case text-ink-faint">— optional, narrows what you see</span>
+          {t("setup.interests")} <span className="normal-case text-ink-faint">{t("setup.interestsHint")}</span>
         </label>
         <div className="flex flex-wrap gap-2">
           {CATEGORIES.map((c) => (
@@ -351,7 +267,7 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
                   : "border-line bg-paper-raised text-ink-soft"
               }`}
             >
-              {c.label}
+              {t(`categories.${c.slug}`, c.label)}
             </button>
           ))}
         </div>
@@ -363,7 +279,7 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
         type="button"
         className="w-full bg-accent py-3 text-sm font-bold text-onaccent disabled:opacity-60"
       >
-        {createTrip.isPending ? "Setting up…" : interests.length === 0 ? "See everything →" : "See what's on →"}
+        {createTrip.isPending ? t("setup.submitting") : interests.length === 0 ? t("setup.submitAll") : t("setup.submitFiltered")}
       </button>
     </div>
   );

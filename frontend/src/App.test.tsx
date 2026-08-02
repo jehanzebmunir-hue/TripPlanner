@@ -1,7 +1,9 @@
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
+import { setLanguage } from "./i18n";
 
 vi.mock("./api", () => ({
   api: {
@@ -50,5 +52,27 @@ describe("App footer support link", () => {
 
     const link = await screen.findByText(/support this project/i);
     expect(link.closest("a")).toHaveAttribute("href", "https://ko-fi.com/example");
+  });
+});
+
+describe("language toggle", () => {
+  afterEach(() => {
+    setLanguage("en"); // reset for every other test in the suite, which assumes English
+  });
+
+  it("defaults to English", async () => {
+    renderApp();
+    expect(await screen.findByText("Your next trip")).toBeInTheDocument();
+  });
+
+  it("switches real UI chrome text to Spanish and persists the choice, without touching untranslated content", async () => {
+    const user = userEvent.setup();
+    renderApp();
+    await screen.findByText("Your next trip");
+
+    await user.click(screen.getByRole("button", { name: "ES" }));
+
+    expect(await screen.findByText("Tu próximo viaje")).toBeInTheDocument();
+    expect(localStorage.getItem("language")).toBe("es");
   });
 });

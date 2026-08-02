@@ -1,3 +1,4 @@
+import { useTranslation } from "react-i18next";
 import { Place } from "../types";
 
 const BAND_STYLES: Record<string, string> = {
@@ -24,9 +25,9 @@ interface Props {
 // Renders nothing when priceAmount is null/undefined — an unverified price
 // looks identical to today's UI, on purpose, rather than showing a
 // confusing "price unknown" placeholder for what's still most of the data.
-function formatPrice(amount: number | null | undefined, currency: string): string | null {
+function formatPrice(amount: number | null | undefined, currency: string, freeLabel: string): string | null {
   if (amount == null) return null;
-  if (amount === 0) return "Free";
+  if (amount === 0) return freeLabel;
   // A fixed locale, not the runtime's default (`undefined`) -- Intl's
   // default-locale resolution is environment-dependent (verified live: the
   // exact same code rendered "$30" on Ubuntu CI but a different string
@@ -46,14 +47,19 @@ export function PlaceCard({
   onToggleAdd,
   onConfirm,
 }: Props) {
-  const badgeLabel = place.band === "stale" ? `Stale · ${place.daysSince}d ago` : `Verified ${place.daysSince}d ago`;
-  const price = formatPrice(place.priceAmount, currency);
+  const { t } = useTranslation();
+  const badgeLabel =
+    place.band === "stale"
+      ? t("placeCard.stale", { days: place.daysSince })
+      : t("placeCard.verified", { days: place.daysSince });
+  const freeLabel = t("placeCard.free");
+  const price = formatPrice(place.priceAmount, currency, freeLabel);
   // Only a real, positive priceAmount converts -- "Free" and unverified
   // prices have nothing to convert, and a 0 or negative rate would only
   // ever come from a broken provider response, never a real one.
   const converted =
     place.priceAmount && place.priceAmount > 0 && homeCurrency && exchangeRate
-      ? formatPrice(place.priceAmount * exchangeRate, homeCurrency)
+      ? formatPrice(place.priceAmount * exchangeRate, homeCurrency, freeLabel)
       : null;
 
   return (
@@ -82,7 +88,7 @@ export function PlaceCard({
             className="border border-stale px-3 py-1.5 text-xs text-stale"
             type="button"
           >
-            Still valid?
+            {t("placeCard.stillValid")}
           </button>
         ) : (
           <button
@@ -92,7 +98,7 @@ export function PlaceCard({
               added ? "border-verified bg-verified-bg text-verified" : "border-accent text-accent"
             }`}
           >
-            {added ? "Added ✓" : "Add to trip"}
+            {added ? t("placeCard.added") : t("placeCard.addToTrip")}
           </button>
         )}
       </div>

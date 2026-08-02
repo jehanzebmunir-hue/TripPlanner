@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { api } from "../api";
 import { CitySummary } from "../types";
 
@@ -13,6 +14,7 @@ interface Props {
 // cityResolution.service.ts). Collapsed by default, same pattern as
 // FindDestinationPanel.
 export function CitySearchPanel({ onPick }: Props) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<CitySummary[]>([]);
@@ -49,7 +51,7 @@ export function CitySearchPanel({ onPick }: Props) {
         onClick={() => setOpen(true)}
         className="text-left font-mono text-[11.5px] uppercase tracking-wide text-accent underline"
       >
-        Not on the list? Search any place →
+        {t("citySearch.opener")}
       </button>
     );
   }
@@ -60,25 +62,25 @@ export function CitySearchPanel({ onPick }: Props) {
     <div className="border border-line bg-paper-raised p-4">
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
-          <h3 className="font-serif text-base">Search any place</h3>
-          <p className="text-xs text-ink-soft">Real OpenStreetMap data — fewer curated details than the main list.</p>
+          <h3 className="font-serif text-base">{t("citySearch.heading")}</h3>
+          <p className="text-xs text-ink-soft">{t("citySearch.subheading")}</p>
         </div>
         <button type="button" onClick={() => setOpen(false)} className="font-mono text-[11px] text-ink-faint">
-          Close
+          {t("common.close")}
         </button>
       </div>
 
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Try a city, town, or village…"
-        aria-label="Search any place"
+        placeholder={t("citySearch.placeholder")}
+        aria-label={t("citySearch.heading")}
         className="mb-3 w-full border border-line bg-paper px-3 py-2 text-sm"
       />
 
-      {loading && <p className="text-xs text-ink-faint">Searching…</p>}
+      {loading && <p className="text-xs text-ink-faint">{t("citySearch.searching")}</p>}
       {!loading && trimmed.length >= 2 && results.length === 0 && (
-        <p className="text-xs text-ink-faint">No matches found.</p>
+        <p className="text-xs text-ink-faint">{t("citySearch.noMatches")}</p>
       )}
 
       <div className="space-y-2">
@@ -96,7 +98,7 @@ export function CitySearchPanel({ onPick }: Props) {
             <div className="flex items-baseline justify-between gap-2">
               <span className="text-sm font-bold">{r.name}</span>
               {r.dataSource === "community" && (
-                <span className="font-mono text-[10px] uppercase tracking-wide text-ink-faint">OSM only</span>
+                <span className="font-mono text-[10px] uppercase tracking-wide text-ink-faint">{t("citySearch.osmOnly")}</span>
               )}
             </div>
           </button>

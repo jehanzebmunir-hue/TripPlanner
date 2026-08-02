@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { setEditToken } from "./api";
 import { AccountPanel } from "./components/AccountPanel";
 import { ChecklistScreen } from "./components/ChecklistScreen";
@@ -6,6 +7,7 @@ import { DiscoverScreen } from "./components/DiscoverScreen";
 import { ItineraryScreen } from "./components/ItineraryScreen";
 import { SetupScreen } from "./components/SetupScreen";
 import { useCities, useTrip } from "./hooks";
+import { Language, setLanguage, SUPPORTED_LANGUAGES } from "./i18n";
 import { CreatedTrip } from "./types";
 import { useOnlineStatus } from "./useOnlineStatus";
 
@@ -18,6 +20,7 @@ function tripIdFromUrl(): string | undefined {
 }
 
 export default function App() {
+  const { t, i18n } = useTranslation();
   const [tripId, setTripIdState] = useState<string | undefined>(
     () => tripIdFromUrl() ?? localStorage.getItem("tripId") ?? undefined
   );
@@ -75,12 +78,12 @@ export default function App() {
     <div className="mx-auto flex min-h-screen max-w-[460px] flex-col">
       {!online && (
         <div className="bg-aging-bg px-5 py-1.5 text-center font-mono text-[11px] uppercase tracking-wide text-aging">
-          You're offline — showing saved data
+          {t("app.offline")}
         </div>
       )}
       <header className="sticky top-0 z-10 border-b border-line bg-paper px-5 pb-3 pt-6">
         <div className="flex items-start justify-between gap-3">
-          <p className="mb-1.5 font-mono text-[10.5px] uppercase tracking-[0.12em] text-accent">Trip Planner</p>
+          <p className="mb-1.5 font-mono text-[10.5px] uppercase tracking-[0.12em] text-accent">{t("app.tagline")}</p>
           <div className="flex items-center gap-3">
             {tripId && (
               <button
@@ -88,38 +91,50 @@ export default function App() {
                 onClick={copyLink}
                 className="font-mono text-[10.5px] uppercase tracking-wide text-ink-faint underline"
               >
-                {copied ? "Copied ✓" : "Copy link"}
+                {copied ? t("app.copied") : t("app.copyLink")}
               </button>
             )}
+            <div className="flex gap-1 font-mono text-[10.5px] uppercase tracking-wide text-ink-faint" aria-label={t("app.language")}>
+              {SUPPORTED_LANGUAGES.map((lang: Language) => (
+                <button
+                  key={lang}
+                  type="button"
+                  onClick={() => setLanguage(lang)}
+                  className={i18n.language === lang ? "text-accent underline" : "underline"}
+                >
+                  {lang.toUpperCase()}
+                </button>
+              ))}
+            </div>
             <AccountPanel onOpenTrip={openTrip} />
           </div>
         </div>
         <h1 className="mb-1 font-serif text-[22px]">
           {trip
             ? [trip.destination, ...trip.legs.map((l) => l.destination)].join(" → ")
-            : "Your next trip"}
+            : t("app.newTripTitle")}
         </h1>
         <p className="text-[12.5px] text-ink-soft">
           {trip
-            ? `${trip.startDate?.slice(0, 10) ?? ""} – ${trip.endDate?.slice(0, 10) ?? ""} · Solo trip${
-                tripCurrency ? ` · Prices there: ${tripCurrency}` : ""
+            ? `${trip.startDate?.slice(0, 10) ?? ""} – ${trip.endDate?.slice(0, 10) ?? ""} · ${t("app.soloTrip")}${
+                tripCurrency ? ` · ${t("app.pricesThere", { currency: tripCurrency })}` : ""
               }`
-            : "Plan your trip to get started"}
+            : t("app.newTripSubtitle")}
         </p>
       </header>
 
       <nav className="sticky top-[86px] z-10 flex gap-0.5 border-b border-line bg-paper px-5 pt-2.5">
-        {TABS.map((t) => (
+        {TABS.map((tabName) => (
           <button
-            key={t}
+            key={tabName}
             type="button"
-            onClick={() => setTab(t)}
+            onClick={() => setTab(tabName)}
             className={`flex-1 border-b-2 px-1 pb-3 pt-2.5 font-mono text-[12.5px] capitalize tracking-wide ${
-              tab === t ? "border-accent text-ink" : "border-transparent text-ink-faint"
+              tab === tabName ? "border-accent text-ink" : "border-transparent text-ink-faint"
             }`}
           >
-            {t}
-            {t === "itinerary" && addedIds.size > 0 && (
+            {t(`app.tabs.${tabName}`)}
+            {tabName === "itinerary" && addedIds.size > 0 && (
               <span className="ml-1.5 rounded-full bg-accent px-1.5 py-0.5 font-mono text-[10px] text-onaccent">
                 {addedIds.size}
               </span>
@@ -144,7 +159,7 @@ export default function App() {
         )}
         {tab === "itinerary" && tripId && trip && <ItineraryScreen tripId={tripId} />}
         {tab === "checklist" && tripId && trip && <ChecklistScreen tripId={tripId} city={trip.city} />}
-        {tab !== "setup" && !tripId && <p className="text-sm text-ink-soft">Set up a trip first.</p>}
+        {tab !== "setup" && !tripId && <p className="text-sm text-ink-soft">{t("app.setUpFirst")}</p>}
       </main>
 
       {/* Required attribution for OpenStreetMap-sourced place data (ODbL) —
@@ -152,11 +167,19 @@ export default function App() {
           is normally attributed in an app rather than in a curated dataset. */}
       <footer className="space-y-1 border-t border-line px-5 py-3 text-center font-mono text-[10px] uppercase tracking-wide text-ink-faint">
         <p>
-          Place data ©{" "}
-          <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="underline">
-            OpenStreetMap
-          </a>{" "}
-          contributors
+          <Trans
+            i18nKey="app.attribution"
+            components={{
+              link: (
+                <a
+                  href="https://www.openstreetmap.org/copyright"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="underline"
+                />
+              ),
+            }}
+          />
         </p>
         {/* Off by default -- no real support-link URL exists yet. Set
             VITE_SUPPORT_URL at build time (Render env vars) once you've
@@ -165,7 +188,7 @@ export default function App() {
         {import.meta.env.VITE_SUPPORT_URL && (
           <p>
             <a href={import.meta.env.VITE_SUPPORT_URL} target="_blank" rel="noreferrer" className="underline">
-              Support this project
+              {t("app.support")}
             </a>
           </p>
         )}

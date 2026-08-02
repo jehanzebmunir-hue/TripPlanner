@@ -1,9 +1,11 @@
 import { FormEvent, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
 import { useDeleteTrip, useMyTrips } from "../hooks";
 
 export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => void }) {
+  const { t } = useTranslation();
   const { user, loading, login, register, logout, deleteAccount } = useAuth();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"login" | "register" | "reset">("login");
@@ -66,7 +68,7 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
           onClick={() => setOpen((o) => !o)}
           className="font-mono text-[10.5px] uppercase tracking-wide text-ink-faint underline"
         >
-          Log in
+          {t("account.logIn")}
         </button>
         {open && (
           <div className="absolute right-0 top-6 z-20 w-64 border border-line bg-paper-raised p-4 shadow-md">
@@ -80,7 +82,7 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
                 }}
                 className={mode === "login" ? "text-accent" : "text-ink-faint"}
               >
-                Log in
+                {t("account.logIn")}
               </button>
               <button
                 type="button"
@@ -91,7 +93,7 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
                 }}
                 className={mode === "register" ? "text-accent" : "text-ink-faint"}
               >
-                Sign up
+                {t("account.signUp")}
               </button>
             </div>
             {mode === "reset" ? (
@@ -106,16 +108,16 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
                     }}
                     className="font-mono text-[10.5px] uppercase tracking-wide text-accent underline"
                   >
-                    Back to log in
+                    {t("account.backToLogIn")}
                   </button>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-2">
-                  <p className="text-xs text-ink-soft">We'll email a reset link if that address has an account.</p>
+                  <p className="text-xs text-ink-soft">{t("account.resetHint")}</p>
                   <input
                     type="email"
                     required
-                    placeholder="Email"
+                    placeholder={t("account.email")}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full border border-line bg-paper px-2.5 py-1.5 text-[13px]"
@@ -126,14 +128,14 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
                     disabled={submitting}
                     className="w-full bg-accent py-1.5 text-xs font-bold text-onaccent disabled:opacity-60"
                   >
-                    {submitting ? "…" : "Send reset link"}
+                    {submitting ? t("account.submittingShort") : t("account.sendResetLink")}
                   </button>
                   <button
                     type="button"
                     onClick={() => setMode("login")}
                     className="font-mono text-[10.5px] uppercase tracking-wide text-ink-faint underline"
                   >
-                    Back to log in
+                    {t("account.backToLogIn")}
                   </button>
                 </form>
               )
@@ -142,7 +144,7 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
                 <input
                   type="email"
                   required
-                  placeholder="Email"
+                  placeholder={t("account.email")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="w-full border border-line bg-paper px-2.5 py-1.5 text-[13px]"
@@ -151,7 +153,7 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
                   type="password"
                   required
                   minLength={8}
-                  placeholder="Password (8+ characters)"
+                  placeholder={t("account.password")}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   className="w-full border border-line bg-paper px-2.5 py-1.5 text-[13px]"
@@ -162,7 +164,7 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
                   disabled={submitting}
                   className="w-full bg-accent py-1.5 text-xs font-bold text-onaccent disabled:opacity-60"
                 >
-                  {submitting ? "…" : mode === "login" ? "Log in" : "Create account"}
+                  {submitting ? t("account.submittingShort") : mode === "login" ? t("account.logIn") : t("account.createAccount")}
                 </button>
                 {mode === "login" && (
                   <button
@@ -173,7 +175,7 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
                     }}
                     className="font-mono text-[10.5px] uppercase tracking-wide text-ink-faint underline"
                   >
-                    Forgot password?
+                    {t("account.forgotPassword")}
                   </button>
                 )}
               </form>
@@ -194,12 +196,12 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
         }}
         className="font-mono text-[10.5px] uppercase tracking-wide text-ink-faint underline"
       >
-        {user.email.split("@")[0]} · My Trips
+        {t("account.myTripsLink", { name: user.email.split("@")[0] })}
       </button>
       {open && (
         <div className="absolute right-0 top-6 z-20 w-72 border border-line bg-paper-raised p-4 shadow-md">
-          <p className="mb-2 font-mono text-[10.5px] uppercase tracking-wide text-ink-faint">My trips</p>
-          {(!myTrips || myTrips.length === 0) && <p className="mb-3 text-xs text-ink-faint">No saved trips yet.</p>}
+          <p className="mb-2 font-mono text-[10.5px] uppercase tracking-wide text-ink-faint">{t("account.myTrips")}</p>
+          {(!myTrips || myTrips.length === 0) && <p className="mb-3 text-xs text-ink-faint">{t("account.noSavedTrips")}</p>}
           <div className="mb-3 space-y-1.5">
             {myTrips?.map((t) => (
               <div key={t.id} className="flex items-center gap-1.5">
@@ -236,7 +238,7 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
               }}
               className="font-mono text-[10.5px] uppercase tracking-wide text-stale"
             >
-              Log out
+              {t("account.logOut")}
             </button>
             <button
               type="button"
@@ -244,13 +246,11 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
               disabled={submitting}
               className="font-mono text-[10.5px] uppercase tracking-wide text-stale disabled:opacity-60"
             >
-              {confirmingDelete ? "Confirm delete account?" : "Delete account"}
+              {confirmingDelete ? t("account.confirmDeleteAccount") : t("account.deleteAccount")}
             </button>
           </div>
           {confirmingDelete && (
-            <p className="mt-2 text-[11px] text-ink-faint">
-              This removes your login only — trips stay saved anonymously at their own URLs.
-            </p>
+            <p className="mt-2 text-[11px] text-ink-faint">{t("account.deleteAccountHint")}</p>
           )}
           {error && <p className="mt-2 text-xs text-stale">{error}</p>}
         </div>

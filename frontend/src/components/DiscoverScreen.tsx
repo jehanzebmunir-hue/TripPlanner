@@ -1,5 +1,6 @@
 import { useState } from "react";
-import { categoryLabel } from "../categories";
+import { useTranslation } from "react-i18next";
+import { CATEGORIES } from "../categories";
 import {
   useAddItem,
   useCities,
@@ -22,6 +23,9 @@ interface Props {
 }
 
 export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, homeCurrency }: Props) {
+  const { t } = useTranslation();
+  const categoryLabel = (slug: string) =>
+    t(`categories.${slug}`, CATEGORIES.find((c) => c.slug === slug)?.label ?? slug);
   const [query, setQuery] = useState("");
   // Which of this trip's cities Discover is currently browsing -- defaults
   // to the trip's primary city. Adding an item while browsing a leg's city
@@ -77,31 +81,31 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
 
       {degraded.length > 0 && (
         <div className="border border-aging bg-aging-bg px-3 py-2 text-xs text-aging">
-          Event data may be temporarily outdated — {degraded.map((h) => h.adapter).join(", ")} couldn't be reached on
-          the last attempt. Everything else here is unaffected.
+          {t("discover.degradedBanner", { adapters: degraded.map((h) => h.adapter).join(", ") })}
         </div>
       )}
 
       <p className="mb-1 text-sm text-ink-soft">
-        Matched to {interests.map(categoryLabel).join(" and ") || "all categories"}. Every card shows when it was
-        last confirmed.
+        {t("discover.matchedTo", {
+          categories: interests.map(categoryLabel).join(` ${t("common.and")} `) || t("discover.allCategories"),
+        })}
       </p>
 
       <input
         type="search"
         value={query}
         onChange={(e) => setQuery(e.target.value)}
-        placeholder="Search this list by name…"
+        placeholder={t("discover.searchPlaceholder")}
         aria-label="Search places"
         className="w-full border border-line bg-paper-raised px-3 py-2 text-sm"
       />
 
       {filtered.length === 0 && (places ?? []).length > 0 && (
-        <p className="text-sm text-ink-faint">Nothing matches your current filters — try a broader search or fewer interests.</p>
+        <p className="text-sm text-ink-faint">{t("discover.noFilterMatches")}</p>
       )}
 
       {filtered.length === 0 && (places ?? []).length === 0 && (
-        <p className="text-sm text-ink-faint">Nothing ingested for these categories yet — run the ingest script.</p>
+        <p className="text-sm text-ink-faint">{t("discover.noneIngested")}</p>
       )}
 
       {filtered.map((p) => (

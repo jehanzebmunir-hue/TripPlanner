@@ -1,3 +1,5 @@
+import { TFunction } from "i18next";
+import { useTranslation } from "react-i18next";
 import { daysBetween } from "../dateUtils";
 import { useAutoFillItinerary, useCities, useItinerary, useMoveItem, useTrip } from "../hooks";
 import { ItineraryStop } from "../types";
@@ -9,8 +11,8 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 // the displayed date by a day in either direction. Pinning the format to
 // the destination's own timezone (falling back to UTC if it isn't loaded
 // yet) means "Day 1" always shows the date it actually is in that city.
-function formatDayLabel(dayIndex: number, date: string | null, timezone: string): string {
-  if (!date) return `Day ${dayIndex}`;
+function formatDayLabel(t: TFunction, dayIndex: number, date: string | null, timezone: string): string {
+  if (!date) return t("itinerary.dayLabel", { day: dayIndex });
   const d = new Date(date);
   const formatted = d.toLocaleDateString(undefined, {
     weekday: "short",
@@ -18,21 +20,22 @@ function formatDayLabel(dayIndex: number, date: string | null, timezone: string)
     day: "numeric",
     timeZone: timezone,
   });
-  return `Day ${dayIndex} · ${formatted}`;
+  return t("itinerary.dayLabelWithDate", { day: dayIndex, date: formatted });
 }
 
 export function ItineraryScreen({ tripId }: { tripId: string }) {
+  const { t } = useTranslation();
   const { data: days, isLoading } = useItinerary(tripId);
   const { data: trip } = useTrip(tripId);
   const { data: cities } = useCities();
   const moveItem = useMoveItem(tripId);
   const autoFill = useAutoFillItinerary(tripId);
 
-  if (isLoading) return <p className="text-sm text-ink-soft">Loading…</p>;
+  if (isLoading) return <p className="text-sm text-ink-soft">{t("common.loading")}</p>;
   if (!days || days.length === 0) {
     return (
       <div className="space-y-3">
-        <p className="text-sm text-ink-faint">Add places from Discover to build your itinerary.</p>
+        <p className="text-sm text-ink-faint">{t("itinerary.emptyState")}</p>
         {trip && (
           <button
             type="button"
@@ -40,12 +43,10 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
             disabled={autoFill.isPending}
             className="w-full border border-accent py-2.5 text-sm font-semibold text-accent disabled:opacity-60"
           >
-            {autoFill.isPending ? "Building a starter itinerary…" : "Or auto-fill a starter itinerary →"}
+            {autoFill.isPending ? t("itinerary.autoFilling") : t("itinerary.autoFillButton")}
           </button>
         )}
-        {autoFill.isError && (
-          <p className="text-xs text-stale">Couldn't build a starter itinerary — try again in a moment.</p>
-        )}
+        {autoFill.isError && <p className="text-xs text-stale">{t("itinerary.autoFillError")}</p>}
       </div>
     );
   }
@@ -75,7 +76,7 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
 
     return Array.from({ length: totalDays }, (_, i) => {
       const value = i + 1;
-      if (!start) return { value, label: `Day ${value}` };
+      if (!start) return { value, label: t("itinerary.dayLabel", { day: value }) };
       const date = new Date(new Date(start).getTime() + i * DAY_MS);
       const label = date.toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: timezone });
       return { value, label };
@@ -84,9 +85,7 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
 
   return (
     <div className="space-y-7">
-      <p className="text-sm text-ink-soft">
-        Split evenly across your trip by default — move anything to a different day below.
-      </p>
+      <p className="text-sm text-ink-soft">{t("itinerary.splitEvenly")}</p>
 
       {days.map((day) => {
         const dayTimezone = day.stops[0]
@@ -95,13 +94,13 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
 
         return (
           <div key={day.dayIndex}>
-            <h2 className="mb-3 font-serif text-lg">{formatDayLabel(day.dayIndex, day.date, dayTimezone)}</h2>
+            <h2 className="mb-3 font-serif text-lg">{formatDayLabel(t, day.dayIndex, day.date, dayTimezone)}</h2>
 
             {day.stops.map((s) => (
               <div key={s.place.id}>
                 {s.transitFromPrevious && (
                   <p className="my-2 pl-1 font-mono text-[11px] text-ink-faint">
-                    {s.transitFromPrevious.minutes} min · {s.transitFromPrevious.mode}
+                    {t("itinerary.transit", { minutes: s.transitFromPrevious.minutes, mode: s.transitFromPrevious.mode })}
                   </p>
                 )}
                 <div className="mb-3 border border-line bg-paper-raised p-3.5">
@@ -129,7 +128,7 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
                       rel="noreferrer"
                       className="inline-block bg-accent px-3 py-1.5 text-xs font-bold text-onaccent"
                     >
-                      {s.place.bookingLabel ?? "Book"} ↗
+                      {s.place.bookingLabel ?? t("itinerary.book")} ↗
                     </a>
                   )}
                 </div>
