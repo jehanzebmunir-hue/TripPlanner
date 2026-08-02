@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { categoryLabel } from "../categories";
 import {
   useAddItem,
@@ -19,6 +20,7 @@ interface Props {
 }
 
 export function DiscoverScreen({ city, interests, tripId, addedIds, homeCurrency }: Props) {
+  const [query, setQuery] = useState("");
   const { data: places, isLoading } = usePlaces(city);
   const { data: health } = useCityHealth(city);
   const { data: cities } = useCities();
@@ -33,7 +35,15 @@ export function DiscoverScreen({ city, interests, tripId, addedIds, homeCurrency
 
   if (isLoading) return <p className="text-sm text-ink-soft">Loading…</p>;
 
-  const filtered = (places ?? []).filter((p) => interests.length === 0 || interests.includes(p.category));
+  const trimmedQuery = query.trim().toLowerCase();
+  const filtered = (places ?? [])
+    .filter((p) => interests.length === 0 || interests.includes(p.category))
+    .filter(
+      (p) =>
+        !trimmedQuery ||
+        p.name.toLowerCase().includes(trimmedQuery) ||
+        p.description?.toLowerCase().includes(trimmedQuery)
+    );
   const degraded = (health ?? []).filter((h) => h.degraded);
 
   return (
@@ -50,7 +60,20 @@ export function DiscoverScreen({ city, interests, tripId, addedIds, homeCurrency
         last confirmed.
       </p>
 
-      {filtered.length === 0 && (
+      <input
+        type="search"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search this list by name…"
+        aria-label="Search places"
+        className="w-full border border-line bg-paper-raised px-3 py-2 text-sm"
+      />
+
+      {filtered.length === 0 && (places ?? []).length > 0 && (
+        <p className="text-sm text-ink-faint">Nothing matches your current filters — try a broader search or fewer interests.</p>
+      )}
+
+      {filtered.length === 0 && (places ?? []).length === 0 && (
         <p className="text-sm text-ink-faint">Nothing ingested for these categories yet — run the ingest script.</p>
       )}
 

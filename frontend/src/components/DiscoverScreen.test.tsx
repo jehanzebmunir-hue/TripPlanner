@@ -1,4 +1,5 @@
 import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithClient } from "../test/renderWithClient";
 import { DiscoverScreen } from "./DiscoverScreen";
@@ -112,6 +113,51 @@ describe("DiscoverScreen", () => {
 
     await waitFor(() => expect(screen.getByText("$30")).toBeInTheDocument());
     expect(screen.queryByText(/≈/)).not.toBeInTheDocument();
+  });
+
+  it("filters the list by a search query matching the name", async () => {
+    listPlaces.mockResolvedValue([PLACE, { ...PLACE, id: "p2", name: "Central Park" }]);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
+
+    await waitFor(() => expect(screen.getByText("The Met")).toBeInTheDocument());
+    await user.type(screen.getByRole("searchbox", { name: "Search places" }), "central");
+
+    expect(screen.queryByText("The Met")).not.toBeInTheDocument();
+    expect(screen.getByText("Central Park")).toBeInTheDocument();
+  });
+
+  it("filters the list by a search query matching the description", async () => {
+    listPlaces.mockResolvedValue([{ ...PLACE, description: "A quiet rooftop garden" }]);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
+
+    await waitFor(() => expect(screen.getByText("The Met")).toBeInTheDocument());
+    await user.type(screen.getByRole("searchbox", { name: "Search places" }), "rooftop");
+
+    expect(screen.getByText("The Met")).toBeInTheDocument();
+  });
+
+  it("shows a distinct message when a search matches nothing, not the generic ingest-empty message", async () => {
+    listPlaces.mockResolvedValue([PLACE]);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
+
+    await waitFor(() => expect(screen.getByText("The Met")).toBeInTheDocument());
+    await user.type(screen.getByRole("searchbox", { name: "Search places" }), "zzz-nothing-matches");
+
+    expect(screen.queryByText("The Met")).not.toBeInTheDocument();
+    expect(screen.getByText(/nothing matches your current filters/i)).toBeInTheDocument();
+    expect(screen.queryByText(/run the ingest script/i)).not.toBeInTheDocument();
   });
 
   it("shows no price at all when priceAmount hasn't been verified", async () => {
