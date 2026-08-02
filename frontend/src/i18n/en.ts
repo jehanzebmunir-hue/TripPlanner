@@ -143,6 +143,11 @@ export const en = {
     confirmDeleteAccount: "Confirm delete account?",
     deleteAccountHint: "This removes your login only — trips stay saved anonymously at their own URLs.",
   },
+  map: {
+    regionLabel: "Map showing {{count}} places",
+    show: "Show map",
+    hide: "Hide map",
+  },
   categories: {
     "sightseeing-culture": "Sightseeing & Culture",
     "food-dining": "Food & Dining",

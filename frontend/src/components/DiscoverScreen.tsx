@@ -11,6 +11,7 @@ import {
   useRemoveItem,
 } from "../hooks";
 import { Place, TripLeg } from "../types";
+import { MapView } from "./MapView";
 import { PlaceCard } from "./PlaceCard";
 import { PlaceCardSkeleton } from "./Skeleton";
 
@@ -32,6 +33,7 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
   const categoryLabel = (slug: string) =>
     t(`categories.${slug}`, CATEGORIES.find((c) => c.slug === slug)?.label ?? slug);
   const [query, setQuery] = useState("");
+  const [showMap, setShowMap] = useState(true);
   // Which of this trip's cities Discover is currently browsing -- defaults
   // to the trip's primary city. Adding an item while browsing a leg's city
   // tags it with that leg automatically server-side (the place's own city
@@ -170,6 +172,19 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
 
       {filtered.length === 0 && (places ?? []).length === 0 && (
         <p className="text-sm text-ink-faint">{t("discover.noneIngested")}</p>
+      )}
+
+      {filtered.length > 0 && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowMap((v) => !v)}
+            className="mb-2 font-mono text-[11px] uppercase tracking-wide text-ink-faint underline"
+          >
+            {showMap ? t("map.hide") : t("map.show")}
+          </button>
+          {showMap && <MapView places={filtered} />}
+        </div>
       )}
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">

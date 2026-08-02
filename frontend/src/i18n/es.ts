@@ -145,6 +145,11 @@ export const es: TranslationResource = {
     confirmDeleteAccount: "¿Confirmar eliminación de cuenta?",
     deleteAccountHint: "Esto elimina solo tu inicio de sesión — los viajes se guardan de forma anónima en sus propias URLs.",
   },
+  map: {
+    regionLabel: "Mapa que muestra {{count}} lugares",
+    show: "Mostrar mapa",
+    hide: "Ocultar mapa",
+  },
   categories: {
     "sightseeing-culture": "Turismo y Cultura",
     "food-dining": "Comida y Restaurantes",

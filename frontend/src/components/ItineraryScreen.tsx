@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 import { daysBetween } from "../dateUtils";
 import { useAutoFillItinerary, useCities, useItinerary, useMoveItem, useTrip } from "../hooks";
 import { ItineraryDay, ItineraryStop } from "../types";
+import { MapView } from "./MapView";
 import { Skeleton } from "./Skeleton";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -39,6 +40,7 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
   // rather than carried in dataTransfer, since it's already all in memory.
   const [draggedStop, setDraggedStop] = useState<ItineraryStop | null>(null);
   const [dragOverDayIndex, setDragOverDayIndex] = useState<number | null>(null);
+  const [showMaps, setShowMaps] = useState(true);
 
   if (isLoading) {
     return (
@@ -134,7 +136,16 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
   return (
     <div className="space-y-7">
       <h2 className="sr-only">{t("app.tabs.itinerary")}</h2>
-      <p className="text-sm text-ink-soft">{t("itinerary.splitEvenly")}</p>
+      <div className="flex items-center justify-between gap-2">
+        <p className="text-sm text-ink-soft">{t("itinerary.splitEvenly")}</p>
+        <button
+          type="button"
+          onClick={() => setShowMaps((v) => !v)}
+          className="shrink-0 font-mono text-[11px] uppercase tracking-wide text-ink-faint underline"
+        >
+          {showMaps ? t("map.hide") : t("map.show")}
+        </button>
+      </div>
 
       {moveItem.isError && (
         <p role="alert" className="border border-stale bg-stale-bg px-3 py-2 text-xs text-stale">
@@ -166,6 +177,12 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
             className={dragOverDayIndex === day.dayIndex ? "outline outline-2 outline-accent" : undefined}
           >
             <h3 className="mb-3 font-serif text-lg">{formatDayLabel(t, day.dayIndex, day.date, dayTimezone)}</h3>
+
+            {showMaps && day.stops.length > 0 && (
+              <div className="mb-3">
+                <MapView places={day.stops.map((s) => s.place)} />
+              </div>
+            )}
 
             {day.stops.map((s) => (
               <div key={s.place.id}>
