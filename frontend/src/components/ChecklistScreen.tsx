@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { api } from "../api";
 import { useChecklist, useToggleChecklistItem } from "../hooks";
 import { ChecklistEntry } from "../types";
+import { Skeleton } from "./Skeleton";
 
 // Compared against the backend's own (English-only -- see i18n scope note
 // in README) checklist template text to find this one special item, not
@@ -16,7 +17,21 @@ export function ChecklistScreen({ tripId, city }: { tripId: string; city: string
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  if (isLoading || !data) return <p className="text-sm text-ink-soft">{t("common.loading")}</p>;
+  if (isLoading || !data) {
+    return (
+      <div className="space-y-6">
+        <p role="status" className="sr-only">
+          {t("common.loading")}
+        </p>
+        {[0, 1].map((i) => (
+          <div key={i}>
+            <Skeleton className="mb-2 h-3 w-28" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   const groups: { title: string; items: ChecklistEntry[] }[] = [
     { title: t("checklist.fromItinerary"), items: data.fromItinerary },

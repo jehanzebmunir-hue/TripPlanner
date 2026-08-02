@@ -12,6 +12,7 @@ import {
 } from "../hooks";
 import { TripLeg } from "../types";
 import { PlaceCard } from "./PlaceCard";
+import { PlaceCardSkeleton } from "./Skeleton";
 
 interface Props {
   city: string;
@@ -47,7 +48,20 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
   // day, so there's nothing to gain from asking more than once here either.
   const { data: exchangeRate } = useExchangeRate(currency, homeCurrency ?? undefined);
 
-  if (isLoading) return <p className="text-sm text-ink-soft">{t("common.loading")}</p>;
+  if (isLoading) {
+    return (
+      <div className="space-y-3">
+        <p role="status" className="sr-only">
+          {t("common.loading")}
+        </p>
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+          {[0, 1, 2, 3].map((i) => (
+            <PlaceCardSkeleton key={i} />
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   const trimmedQuery = query.trim().toLowerCase();
   const filtered = (places ?? [])
@@ -115,19 +129,21 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
         <p className="text-sm text-ink-faint">{t("discover.noneIngested")}</p>
       )}
 
-      {filtered.map((p) => (
-        <PlaceCard
-          key={p.id}
-          place={p}
-          added={addedIds.has(p.id)}
-          categoryLabel={categoryLabel(p.category)}
-          currency={currency}
-          homeCurrency={homeCurrency ?? undefined}
-          exchangeRate={exchangeRate?.rate}
-          onToggleAdd={() => (addedIds.has(p.id) ? removeItem.mutate(p.id) : addItem.mutate(p.id))}
-          onConfirm={(vote) => confirm.mutate({ id: p.id, vote })}
-        />
-      ))}
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+        {filtered.map((p) => (
+          <PlaceCard
+            key={p.id}
+            place={p}
+            added={addedIds.has(p.id)}
+            categoryLabel={categoryLabel(p.category)}
+            currency={currency}
+            homeCurrency={homeCurrency ?? undefined}
+            exchangeRate={exchangeRate?.rate}
+            onToggleAdd={() => (addedIds.has(p.id) ? removeItem.mutate(p.id) : addItem.mutate(p.id))}
+            onConfirm={(vote) => confirm.mutate({ id: p.id, vote })}
+          />
+        ))}
+      </div>
     </div>
   );
 }

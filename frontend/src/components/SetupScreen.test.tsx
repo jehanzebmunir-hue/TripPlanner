@@ -185,4 +185,22 @@ describe("SetupScreen", () => {
       expect.objectContaining({ city: "hallstatt-at", destination: "Hallstatt, Austria" })
     );
   });
+
+  it("blocks submission and shows a real error when the end date is before the start date", async () => {
+    listCities.mockResolvedValue(CITIES);
+    listVibes.mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    renderWithClient(<SetupScreen interests={[]} onInterestsChange={vi.fn()} onCreated={vi.fn()} />);
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Destination" })).toHaveValue("nyc"));
+
+    const callsBefore = createTrip.mock.calls.length;
+    const endDateInput = screen.getByLabelText("End date");
+    await user.clear(endDateInput);
+    await user.type(endDateInput, "2020-01-01");
+
+    expect(screen.getByRole("alert")).toHaveTextContent(/end date can't be before/i);
+    expect(screen.getByRole("button", { name: /see everything/i })).toBeDisabled();
+    expect(createTrip.mock.calls.length).toBe(callsBefore);
+  });
 });

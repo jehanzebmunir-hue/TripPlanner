@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { daysBetween } from "../dateUtils";
 import { useAutoFillItinerary, useCities, useItinerary, useMoveItem, useTrip } from "../hooks";
 import { ItineraryStop } from "../types";
+import { Skeleton } from "./Skeleton";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -31,7 +32,20 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
   const moveItem = useMoveItem(tripId);
   const autoFill = useAutoFillItinerary(tripId);
 
-  if (isLoading) return <p className="text-sm text-ink-soft">{t("common.loading")}</p>;
+  if (isLoading) {
+    return (
+      <div className="space-y-7">
+        <p role="status" className="sr-only">
+          {t("common.loading")}
+        </p>
+        <div>
+          <Skeleton className="mb-3 h-6 w-40" />
+          <Skeleton className="mb-3 h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      </div>
+    );
+  }
   if (!days || days.length === 0) {
     return (
       <div className="space-y-3">

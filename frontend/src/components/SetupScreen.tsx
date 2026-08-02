@@ -50,6 +50,11 @@ function countryName(code: string, locale: string): string {
   }
 }
 
+// Today's date, computed once per module load rather than per render --
+// used as the floor for every date input so the browser's own picker won't
+// even offer a day trip planning would never actually want (the past).
+const TODAY = new Date().toISOString().slice(0, 10);
+
 export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) {
   const { t, i18n } = useTranslation();
   const { data: cities } = useCities();
@@ -71,6 +76,11 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
     return Array.from(map.values());
   }, [cities, pickedCities]);
   const cityGroups = useMemo(() => groupByCountry(allKnownCities), [allKnownCities]);
+  // Unambiguously wrong (an end before its own start) rather than a softer
+  // rule like leg chronology -- a traveler reordering legs mid-edit is a
+  // real, valid intermediate state, not something to block on.
+  const dateError =
+    (startDate && endDate && endDate < startDate) || legs.some((l) => l.startDate && l.endDate && l.endDate < l.startDate);
 
   useEffect(() => {
     if (!city && cities && cities.length > 0) setCity(cities[0].slug);
@@ -159,16 +169,25 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
           <input
             type="date"
             value={startDate}
+            min={TODAY}
             onChange={(e) => setStartDate(e.target.value)}
+            aria-label={t("setup.startDate")}
             className="flex-1 border border-line bg-paper-raised px-3 py-2.5 font-mono text-[13px]"
           />
           <input
             type="date"
             value={endDate}
+            min={startDate || TODAY}
             onChange={(e) => setEndDate(e.target.value)}
+            aria-label={t("setup.endDate")}
             className="flex-1 border border-line bg-paper-raised px-3 py-2.5 font-mono text-[13px]"
           />
         </div>
+        {startDate && endDate && endDate < startDate && (
+          <p role="alert" className="mt-1.5 text-xs text-stale">
+            {t("setup.dateOrderError")}
+          </p>
+        )}
       </div>
 
       <div>
@@ -210,6 +229,7 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
               <input
                 type="date"
                 value={leg.startDate}
+                min={TODAY}
                 onChange={(e) => updateLeg(i, { startDate: e.target.value })}
                 aria-label={t("setup.cityNStartDate", { n: i + 2 })}
                 className="flex-1 border border-line bg-paper px-3 py-2 font-mono text-[13px]"
@@ -217,11 +237,17 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
               <input
                 type="date"
                 value={leg.endDate}
+                min={leg.startDate || TODAY}
                 onChange={(e) => updateLeg(i, { endDate: e.target.value })}
                 aria-label={t("setup.cityNEndDate", { n: i + 2 })}
                 className="flex-1 border border-line bg-paper px-3 py-2 font-mono text-[13px]"
               />
             </div>
+            {leg.startDate && leg.endDate && leg.endDate < leg.startDate && (
+              <p role="alert" className="mt-1.5 text-xs text-stale">
+                {t("setup.dateOrderError")}
+              </p>
+            )}
           </div>
         ))}
         <button
@@ -275,7 +301,7 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
 
       <button
         onClick={handleSubmit}
-        disabled={createTrip.isPending || !city}
+        disabled={createTrip.isPending || !city || dateError}
         type="button"
         className="w-full bg-accent py-3 text-sm font-bold text-onaccent disabled:opacity-60"
       >
