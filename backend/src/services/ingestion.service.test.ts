@@ -28,7 +28,7 @@ const brokenAdapter = { name: "broken", run: vi.fn().mockRejectedValue(new Error
 
 vi.mock("../adapters", () => ({
   ADAPTERS: { working: workingAdapter, empty: emptyAdapter, broken: brokenAdapter },
-  DEFAULT_ADAPTERS: ["working", "empty", "broken"],
+  adaptersForCity: (city: { extraAdapters?: string[] }) => ["working", "empty", "broken", ...(city.extraAdapters ?? [])],
 }));
 
 describe("ingestCity", () => {

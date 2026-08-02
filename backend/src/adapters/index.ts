@@ -1,4 +1,4 @@
-import { SourceAdapter } from "../types";
+import { CityConfig, SourceAdapter } from "../types";
 import { seedAdapter } from "./seed";
 import { nycOpenDataEventsAdapter } from "./nycOpenDataEvents";
 import { chicagoParkEventsAdapter } from "./chicagoParkEvents";
@@ -24,8 +24,18 @@ export const ADAPTERS: Record<string, SourceAdapter> = {
 // Every city gets these by default — each is already parameterized by city
 // name/coordinates, so adding a city needs zero bespoke adapter code. A
 // municipal open-data feed is an opt-in bonus (city.extraAdapters), not a
-// requirement. overpass needs no API key and has no metered budget (unlike
-// google-places) — it's the free-scale complement, not a replacement:
-// google-places' curated data is generally higher quality, overpass is
-// what keeps sightseeing data free and unlimited past that budget ceiling.
-export const DEFAULT_ADAPTERS = ["seed", "google-places", "overpass", "ticketmaster", "seatgeek"];
+// requirement.
+export const DEFAULT_ADAPTERS = ["seed", "overpass", "ticketmaster", "seatgeek"];
+
+// google-places is deliberately *not* in DEFAULT_ADAPTERS. With overpass now
+// covering "every city gets some real static data" for free and unlimited,
+// google-places' real job is a quality upgrade where it matters most, not
+// baseline coverage — spreading its ~166-city free-tier budget across the
+// whole registry would dilute it for no benefit once overpass already fills
+// the gap. Restricted to config/cities.ts's priorityTier set (~44 verified
+// major cities), so the budget concentrates on the cities most likely to
+// actually be visited, instead of one thin layer over all 144.
+export function adaptersForCity(city: CityConfig): string[] {
+  const base = city.priorityTier != null ? [...DEFAULT_ADAPTERS, "google-places"] : DEFAULT_ADAPTERS;
+  return [...base, ...(city.extraAdapters ?? [])];
+}

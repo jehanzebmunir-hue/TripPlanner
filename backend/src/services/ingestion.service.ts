@@ -1,6 +1,6 @@
 import { prisma } from "../lib/prisma";
 import { CITIES, getCity } from "../config/cities";
-import { ADAPTERS, DEFAULT_ADAPTERS } from "../adapters";
+import { ADAPTERS, adaptersForCity } from "../adapters";
 import { ADAPTER_TIER, REFRESH_MS } from "../config/adapterCadence";
 
 export interface AdapterOutcome {
@@ -39,7 +39,7 @@ export async function ingestCity(
   if (!city) throw new Error(`Unknown city: ${citySlug}`);
 
   const results: Record<string, AdapterOutcome> = {};
-  const allAdapterNames = [...DEFAULT_ADAPTERS, ...(city.extraAdapters ?? [])];
+  const allAdapterNames = adaptersForCity(city);
   const adapterNames = adapterFilter ? allAdapterNames.filter((n) => adapterFilter.includes(n)) : allAdapterNames;
 
   for (const adapterName of adapterNames) {
@@ -129,7 +129,7 @@ export async function ensureCityFresh(citySlug: string): Promise<void> {
 
   const run = (async () => {
     try {
-      const adapterNames = [...DEFAULT_ADAPTERS, ...(city.extraAdapters ?? [])];
+      const adapterNames = adaptersForCity(city);
       const health = await prisma.adapterHealth.findMany({
         where: { city: citySlug, adapter: { in: adapterNames } },
       });
