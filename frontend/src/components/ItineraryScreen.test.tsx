@@ -5,11 +5,13 @@ import { ItineraryScreen } from "./ItineraryScreen";
 
 const getItinerary = vi.fn();
 const listCities = vi.fn();
+const getTrip = vi.fn();
 
 vi.mock("../api", () => ({
   api: {
     getItinerary: (...args: unknown[]) => getItinerary(...args),
     listCities: (...args: unknown[]) => listCities(...args),
+    getTrip: (...args: unknown[]) => getTrip(...args),
     moveItem: vi.fn(),
   },
 }));
@@ -18,6 +20,17 @@ const CITIES = [
   { slug: "tokyo", name: "Tokyo, Japan", country: "JP", currency: "JPY", timezone: "Asia/Tokyo" },
   { slug: "la", name: "Los Angeles, CA", country: "US", currency: "USD", timezone: "America/Los_Angeles" },
 ];
+
+const TRIP = {
+  id: "trip1",
+  city: "tokyo",
+  destination: "Tokyo, Japan",
+  startDate: "2026-07-31T00:00:00.000Z",
+  endDate: "2026-08-02T00:00:00.000Z",
+  interests: [],
+  legs: [],
+  items: [],
+};
 
 const PLACE = {
   id: "p1",
@@ -36,8 +49,9 @@ describe("ItineraryScreen", () => {
   it("shows an empty-state message when there are no days yet", async () => {
     getItinerary.mockResolvedValue([]);
     listCities.mockResolvedValue(CITIES);
+    getTrip.mockResolvedValue(TRIP);
 
-    renderWithClient(<ItineraryScreen tripId="trip1" city="tokyo" />);
+    renderWithClient(<ItineraryScreen tripId="trip1" />);
 
     await waitFor(() => {
       expect(screen.getByText(/add places from discover/i)).toBeInTheDocument();
@@ -50,11 +64,16 @@ describe("ItineraryScreen", () => {
     // timezone — the exact bug the timezone fix in ItineraryScreen exists to
     // prevent.
     getItinerary.mockResolvedValue([
-      { dayIndex: 1, date: "2026-07-31T20:00:00.000Z", stops: [{ place: PLACE, transitFromPrevious: null }] },
+      {
+        dayIndex: 1,
+        date: "2026-07-31T20:00:00.000Z",
+        stops: [{ place: PLACE, transitFromPrevious: null, legId: null, itemDayIndex: 1 }],
+      },
     ]);
     listCities.mockResolvedValue(CITIES);
+    getTrip.mockResolvedValue(TRIP);
 
-    renderWithClient(<ItineraryScreen tripId="trip1" city="tokyo" />);
+    renderWithClient(<ItineraryScreen tripId="trip1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Senso-ji")).toBeInTheDocument();
@@ -66,11 +85,35 @@ describe("ItineraryScreen", () => {
   it("falls back to a bare day label when no date is available", async () => {
     getItinerary.mockResolvedValue([{ dayIndex: 2, date: null, stops: [] }]);
     listCities.mockResolvedValue(CITIES);
+    getTrip.mockResolvedValue(TRIP);
 
-    renderWithClient(<ItineraryScreen tripId="trip1" city="tokyo" />);
+    renderWithClient(<ItineraryScreen tripId="trip1" />);
 
     await waitFor(() => {
       expect(screen.getByText("Day 2")).toBeInTheDocument();
     });
+  });
+
+  it("resolves a leg item's own city/timezone independently of the trip's primary city", async () => {
+    // Trip is primarily Tokyo, but this stop belongs to an LA leg -- the day
+    // label must use LA's timezone, not Tokyo's, or it's the exact
+    // multi-city version of the bug the single-city timezone fix prevented.
+    getItinerary.mockResolvedValue([
+      {
+        dayIndex: 1,
+        date: "2026-08-05T20:00:00.000Z",
+        stops: [{ place: { ...PLACE, city: "la" }, transitFromPrevious: null, legId: "leg-la", itemDayIndex: 1 }],
+      },
+    ]);
+    listCities.mockResolvedValue(CITIES);
+    getTrip.mockResolvedValue({
+      ...TRIP,
+      legs: [{ id: "leg-la", city: "la", destination: "Los Angeles, CA", startDate: "2026-08-05T00:00:00.000Z", endDate: "2026-08-06T00:00:00.000Z", order: 0 }],
+    });
+
+    renderWithClient(<ItineraryScreen tripId="trip1" />);
+
+    // 2026-08-05T20:00Z is 2026-08-05 13:00 in LA (UTC-7 in August) -- still Aug 5, not Aug 6.
+    await waitFor(() => expect(screen.getByText(/Day 1.*Aug 5/)).toBeInTheDocument());
   });
 });

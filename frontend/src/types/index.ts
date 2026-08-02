@@ -28,8 +28,21 @@ export interface TripItem {
   id: string;
   placeId: string;
   place: Place;
+  // null = belongs to the trip's own primary city; set = belongs to this
+  // specific additional leg. Inferred server-side from the place's own
+  // city, never chosen by the frontend directly.
+  legId?: string | null;
   dayIndex: number;
   addedAt: string;
+}
+
+export interface TripLeg {
+  id: string;
+  city: string;
+  destination: string;
+  startDate?: string | null;
+  endDate?: string | null;
+  order: number;
 }
 
 export interface Trip {
@@ -40,7 +53,17 @@ export interface Trip {
   endDate?: string | null;
   interests: string[];
   homeCurrency?: string | null;
+  legs: TripLeg[];
   items: TripItem[];
+}
+
+// Only the raw response from creating a trip includes this -- GET /trips/:id
+// never does (it's the public, view-only endpoint; returning this there
+// would let anyone with the plain view link read their way into edit
+// access). Must be persisted client-side right away; there's no way to
+// retrieve it again afterward, by design.
+export interface CreatedTrip extends Trip {
+  editToken: string;
 }
 
 export interface ChecklistEntry {
@@ -65,6 +88,11 @@ export interface TransitEstimate {
 export interface ItineraryStop {
   place: Place;
   transitFromPrevious: TransitEstimate | null;
+  // legId/itemDayIndex are what PATCH .../items/:placeId actually expects
+  // (leg-relative), NOT the day's own dayIndex below (a clean global
+  // position, display-only). See backend trips.routes.ts.
+  legId: string | null;
+  itemDayIndex: number;
 }
 
 export interface ItineraryDay {

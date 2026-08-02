@@ -134,6 +134,10 @@ model PasswordResetToken {
 
 model Trip {
   id          String     @id @default(cuid())
+  // The primary/first city -- unchanged meaning, every existing trip and
+  // every single-city code path keeps working with zero changes. Additional
+  // cities are purely additive via TripLeg below, not a replacement for
+  // this.
   city        String
   destination String
   startDate   DateTime?
@@ -144,11 +148,36 @@ model Trip {
   // trip predates the feature); the UI shows native prices only in that
   // case, same as it always has, rather than guessing a currency.
   homeCurrency String?
+  // Optional second (and third, ...) permission on top of this trip's own
+  // id -- the plain /trip/:id link is view-only; only a link carrying this
+  // token can mutate the trip. Generated once at creation, never rotated
+  // (no edit-permission-revocation flow exists yet -- see README).
+  editToken   String     @unique @default(cuid())
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   userId      String?
   user        User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
   items       TripItem[]
+  legs        TripLeg[]
+}
+
+// Additional cities beyond Trip's own primary city/destination/dates --
+// multi-city trips ("Paris then Rome") without touching how a single-city
+// trip works at all. Which leg a given TripItem belongs to is inferred from
+// its Place's own city matched against a leg's city, not stored redundantly
+// -- see trips.service.ts's addTripItem.
+model TripLeg {
+  id          String     @id @default(cuid())
+  tripId      String
+  trip        Trip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  city        String
+  destination String
+  startDate   DateTime?
+  endDate     DateTime?
+  order       Int        @default(0)
+  items       TripItem[]
+
+  @@index([tripId])
 }
 
 model TripItem {
@@ -157,6 +186,12 @@ model TripItem {
   trip     Trip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
   placeId  String
   place    Place    @relation(fields: [placeId], references: [id])
+  // null = belongs to the trip's own primary city (existing behavior,
+  // unchanged); set = belongs to this specific additional leg. dayIndex
+  // below is always relative to whichever of these two date ranges applies
+  // -- see trips.service.ts/trips.routes.ts for how that's resolved.
+  legId    String?
+  leg      TripLeg? @relation(fields: [legId], references: [id], onDelete: SetNull)
   dayIndex Int      @default(1)
   addedAt  DateTime @default(now())
 

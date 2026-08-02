@@ -76,6 +76,47 @@ describe("SetupScreen", () => {
     expect(lastCall[0]).toEqual(expect.objectContaining({ homeCurrency: "CAD" }));
   });
 
+  it("adds a leg via 'Add another city' and submits it alongside the primary city", async () => {
+    listCities.mockResolvedValue(CITIES);
+    listVibes.mockResolvedValue([]);
+    createTrip.mockResolvedValue({ id: "trip1", city: "nyc", destination: "New York, NY", items: [] });
+    const user = userEvent.setup();
+
+    renderWithClient(<SetupScreen interests={[]} onInterestsChange={vi.fn()} onCreated={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Destination" })).toHaveValue("nyc"));
+    await user.click(screen.getByRole("button", { name: /add another city/i }));
+    await user.selectOptions(screen.getByRole("combobox", { name: "City 2" }), "paris");
+    await user.click(screen.getByRole("button", { name: /see everything/i }));
+
+    await waitFor(() => expect(createTrip).toHaveBeenCalled());
+    const lastCall = createTrip.mock.calls[createTrip.mock.calls.length - 1];
+    expect(lastCall[0].legs).toEqual([
+      expect.objectContaining({ city: "paris", destination: "Paris, France" }),
+    ]);
+  });
+
+  it("removes a leg via its own 'Remove' button, not submitting it", async () => {
+    listCities.mockResolvedValue(CITIES);
+    listVibes.mockResolvedValue([]);
+    createTrip.mockResolvedValue({ id: "trip1", city: "nyc", destination: "New York, NY", items: [] });
+    const user = userEvent.setup();
+
+    renderWithClient(<SetupScreen interests={[]} onInterestsChange={vi.fn()} onCreated={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Destination" })).toHaveValue("nyc"));
+    await user.click(screen.getByRole("button", { name: /add another city/i }));
+    expect(screen.getByRole("combobox", { name: "City 2" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /remove city 2/i }));
+    expect(screen.queryByRole("combobox", { name: "City 2" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /see everything/i }));
+    await waitFor(() => expect(createTrip).toHaveBeenCalled());
+    const lastCall = createTrip.mock.calls[createTrip.mock.calls.length - 1];
+    expect(lastCall[0].legs).toEqual([]);
+  });
+
   it("disables submission until a destination is available", async () => {
     listCities.mockResolvedValue([]);
     listVibes.mockResolvedValue([]);

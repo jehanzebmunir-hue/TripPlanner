@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
+import { setEditToken } from "./api";
 import { AccountPanel } from "./components/AccountPanel";
 import { ChecklistScreen } from "./components/ChecklistScreen";
 import { DiscoverScreen } from "./components/DiscoverScreen";
 import { ItineraryScreen } from "./components/ItineraryScreen";
 import { SetupScreen } from "./components/SetupScreen";
 import { useCities, useTrip } from "./hooks";
-import { Trip } from "./types";
+import { CreatedTrip } from "./types";
 import { useOnlineStatus } from "./useOnlineStatus";
 
 type Tab = "setup" | "discover" | "itinerary" | "checklist";
@@ -42,12 +43,21 @@ export default function App() {
     window.history.pushState({}, "", `/trip/${id}`);
   }
 
-  function handleCreated(newTrip: Trip) {
+  function handleCreated(newTrip: CreatedTrip) {
+    // The ONE time this is ever available -- see api.ts/types.ts. Must be
+    // persisted right now; there's no way to fetch it again afterward.
+    setEditToken(newTrip.editToken);
     setTripId(newTrip.id);
     setTab("discover");
   }
 
   function openTrip(id: string) {
+    // Opening a different trip than whichever one's edit token (if any) is
+    // currently stored -- that token belongs to a different trip now and
+    // sending it here would just be ignored (see assertCanEdit), but
+    // clearing it is more honest than leaving a stale, irrelevant value
+    // sitting in storage.
+    setEditToken(null);
     setTripId(id);
     setTab("discover");
   }
@@ -84,7 +94,11 @@ export default function App() {
             <AccountPanel onOpenTrip={openTrip} />
           </div>
         </div>
-        <h1 className="mb-1 font-serif text-[22px]">{trip?.destination ?? "Your next trip"}</h1>
+        <h1 className="mb-1 font-serif text-[22px]">
+          {trip
+            ? [trip.destination, ...trip.legs.map((l) => l.destination)].join(" → ")
+            : "Your next trip"}
+        </h1>
         <p className="text-[12.5px] text-ink-soft">
           {trip
             ? `${trip.startDate?.slice(0, 10) ?? ""} – ${trip.endDate?.slice(0, 10) ?? ""} · Solo trip${
@@ -121,13 +135,14 @@ export default function App() {
         {tab === "discover" && tripId && trip && (
           <DiscoverScreen
             city={trip.city}
+            legs={trip.legs}
             interests={interests}
             tripId={tripId}
             addedIds={addedIds}
             homeCurrency={trip.homeCurrency}
           />
         )}
-        {tab === "itinerary" && tripId && trip && <ItineraryScreen tripId={tripId} city={trip.city} />}
+        {tab === "itinerary" && tripId && trip && <ItineraryScreen tripId={tripId} />}
         {tab === "checklist" && tripId && trip && <ChecklistScreen tripId={tripId} city={trip.city} />}
         {tab !== "setup" && !tripId && <p className="text-sm text-ink-soft">Set up a trip first.</p>}
       </main>

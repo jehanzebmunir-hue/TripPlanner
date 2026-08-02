@@ -1,9 +1,10 @@
 import { Router } from "express";
 import { getChecklist, toggleChecklistItem } from "../services/checklist.service";
 import { estimateTransit } from "../services/transit";
-import { AuthedRequest, optionalAuth, requireAuth } from "../middleware/auth.middleware";
+import { AuthedRequest, attachEditToken, optionalAuth, requireAuth } from "../middleware/auth.middleware";
 import {
   addTripItem,
+  buildItinerary,
   createTrip,
   deleteTrip,
   getTrip,
@@ -40,34 +41,41 @@ router.get("/:id", async (req, res, next) => {
   }
 });
 
-router.delete("/:id", optionalAuth, async (req: AuthedRequest, res, next) => {
+router.delete("/:id", optionalAuth, attachEditToken, async (req: AuthedRequest, res, next) => {
   try {
-    await deleteTrip(req.params.id, req.userId);
+    await deleteTrip(req.params.id, { userId: req.userId, editToken: req.editToken });
     res.status(204).end();
   } catch (err) {
     next(err);
   }
 });
 
-router.post("/:id/items", async (req, res, next) => {
+router.post("/:id/items", optionalAuth, attachEditToken, async (req: AuthedRequest, res, next) => {
   try {
-    res.json(await addTripItem(req.params.id, req.body.placeId));
+    res.json(
+      await addTripItem(req.params.id, req.body.placeId, { userId: req.userId, editToken: req.editToken })
+    );
   } catch (err) {
     next(err);
   }
 });
 
-router.patch("/:id/items/:placeId", async (req, res, next) => {
+router.patch("/:id/items/:placeId", optionalAuth, attachEditToken, async (req: AuthedRequest, res, next) => {
   try {
-    res.json(await moveTripItem(req.params.id, req.params.placeId, Number(req.body.dayIndex)));
+    res.json(
+      await moveTripItem(req.params.id, req.params.placeId, Number(req.body.dayIndex), {
+        userId: req.userId,
+        editToken: req.editToken,
+      })
+    );
   } catch (err) {
     next(err);
   }
 });
 
-router.delete("/:id/items/:placeId", async (req, res, next) => {
+router.delete("/:id/items/:placeId", optionalAuth, attachEditToken, async (req: AuthedRequest, res, next) => {
   try {
-    await removeTripItem(req.params.id, req.params.placeId);
+    await removeTripItem(req.params.id, req.params.placeId, { userId: req.userId, editToken: req.editToken });
     res.status(204).end();
   } catch (err) {
     next(err);
@@ -93,24 +101,27 @@ router.post("/:id/checklist/:itemKey/toggle", async (req, res, next) => {
 router.get("/:id/itinerary", async (req, res, next) => {
   try {
     const trip = await getTrip(req.params.id);
-    const totalDays = trip.items.reduce((max, i) => Math.max(max, i.dayIndex), 1);
-
-    const days = Array.from({ length: totalDays }, (_, i) => i + 1).map((dayIndex) => {
-      const dayItems = trip.items.filter((i) => i.dayIndex === dayIndex);
-      const places = dayItems.map((i) => i.place);
-      const date = trip.startDate ? new Date(trip.startDate.getTime() + (dayIndex - 1) * DAY_MS) : null;
-
+    const days = buildItinerary(trip).map((day) => {
+      const places = day.items.map((item) => item.place);
       return {
-        dayIndex,
-        date,
+        dayIndex: day.dayIndex, // a clean global position, for display/grouping only
+        date: day.date,
         stops: places.map((place, idx) => ({
           place,
           transitFromPrevious: idx === 0 ? null : estimateTransit(places[idx - 1], place),
+          // The item's real, leg-relative dayIndex and legId -- what
+          // PATCH .../items/:placeId actually expects (see
+          // trips.service.ts's moveTripItem), not the global day.dayIndex
+          // above. Multi-city trips need both: one number for "which day
+          // heading is this under," a different one for "what do I send
+          // back when moving this specific item."
+          legId: day.items[idx].legId,
+          itemDayIndex: day.items[idx].dayIndex,
         })),
       };
     });
 
-    res.json(days.filter((d) => d.stops.length > 0));
+    res.json(days);
   } catch (err) {
     next(err);
   }

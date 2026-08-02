@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { CATEGORIES } from "../categories";
 import { useCities, useCreateTrip } from "../hooks";
-import { CitySummary, Trip } from "../types";
+import { CitySummary, CreatedTrip } from "../types";
 import { FindDestinationPanel } from "./FindDestinationPanel";
 
 interface Props {
   interests: string[];
   onInterestsChange: (interests: string[]) => void;
-  onCreated: (trip: Trip) => void;
+  onCreated: (trip: CreatedTrip) => void;
 }
 
 const COUNTRY_NAMES: Record<string, string> = {
@@ -128,12 +128,19 @@ function groupByCountry(cities: CitySummary[]): [string, CitySummary[]][] {
   return Array.from(groups.entries());
 }
 
+interface LegDraft {
+  city: string;
+  startDate: string;
+  endDate: string;
+}
+
 export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) {
   const { data: cities } = useCities();
   const [city, setCity] = useState("");
   const [startDate, setStartDate] = useState("2026-10-09");
   const [endDate, setEndDate] = useState("2026-10-11");
   const [homeCurrency, setHomeCurrency] = useState("USD");
+  const [legs, setLegs] = useState<LegDraft[]>([]);
   const createTrip = useCreateTrip();
   const cityGroups = useMemo(() => groupByCountry(cities ?? []), [cities]);
 
@@ -145,10 +152,32 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
     onInterestsChange(interests.includes(slug) ? interests.filter((i) => i !== slug) : [...interests, slug]);
   }
 
+  function addLeg() {
+    // Defaults the new leg to start right after wherever the trip currently
+    // ends (the primary city, or the previous leg) -- a reasonable guess
+    // for "next stop," not a requirement; every field stays editable.
+    const previousEnd = legs.length > 0 ? legs[legs.length - 1].endDate : endDate;
+    setLegs([...legs, { city: cities?.[0]?.slug ?? "", startDate: previousEnd, endDate: previousEnd }]);
+  }
+
+  function updateLeg(index: number, patch: Partial<LegDraft>) {
+    setLegs(legs.map((leg, i) => (i === index ? { ...leg, ...patch } : leg)));
+  }
+
+  function removeLeg(index: number) {
+    setLegs(legs.filter((_, i) => i !== index));
+  }
+
   function handleSubmit() {
     const destination = cities?.find((c) => c.slug === city)?.name ?? city;
+    const legInputs = legs.map((leg) => ({
+      city: leg.city,
+      destination: cities?.find((c) => c.slug === leg.city)?.name ?? leg.city,
+      startDate: leg.startDate,
+      endDate: leg.endDate,
+    }));
     createTrip.mutate(
-      { city, destination, startDate, endDate, interests, homeCurrency },
+      { city, destination, startDate, endDate, interests, homeCurrency, legs: legInputs },
       { onSuccess: onCreated }
     );
   }
@@ -199,6 +228,65 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
             className="flex-1 border border-line bg-paper-raised px-3 py-2.5 font-mono text-[13px]"
           />
         </div>
+      </div>
+
+      <div>
+        {legs.map((leg, i) => (
+          <div key={i} className="mb-2.5 border border-line bg-paper-raised p-3">
+            <div className="mb-2 flex items-center justify-between">
+              <span className="font-mono text-[11px] uppercase tracking-wide text-ink-faint">
+                Also visiting
+              </span>
+              <button
+                type="button"
+                onClick={() => removeLeg(i)}
+                aria-label={`Remove city ${i + 2}`}
+                className="font-mono text-[11px] text-ink-faint underline"
+              >
+                Remove
+              </button>
+            </div>
+            <select
+              value={leg.city}
+              onChange={(e) => updateLeg(i, { city: e.target.value })}
+              aria-label={`City ${i + 2}`}
+              className="mb-2 w-full border border-line bg-paper px-3 py-2 text-sm"
+            >
+              {cityGroups.map(([country, group]) => (
+                <optgroup key={country} label={COUNTRY_NAMES[country] ?? country}>
+                  {group.map((c) => (
+                    <option key={c.slug} value={c.slug}>
+                      {c.name}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+            <div className="flex gap-2.5">
+              <input
+                type="date"
+                value={leg.startDate}
+                onChange={(e) => updateLeg(i, { startDate: e.target.value })}
+                aria-label={`City ${i + 2} start date`}
+                className="flex-1 border border-line bg-paper px-3 py-2 font-mono text-[13px]"
+              />
+              <input
+                type="date"
+                value={leg.endDate}
+                onChange={(e) => updateLeg(i, { endDate: e.target.value })}
+                aria-label={`City ${i + 2} end date`}
+                className="flex-1 border border-line bg-paper px-3 py-2 font-mono text-[13px]"
+              />
+            </div>
+          </div>
+        ))}
+        <button
+          type="button"
+          onClick={addLeg}
+          className="w-full border border-dashed border-line py-2 text-xs font-semibold text-ink-soft"
+        >
+          + Add another city
+        </button>
       </div>
 
       <div>

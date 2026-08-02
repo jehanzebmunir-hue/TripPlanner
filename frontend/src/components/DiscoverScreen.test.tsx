@@ -19,7 +19,12 @@ vi.mock("../api", () => ({
   },
 }));
 
-const CITIES = [{ slug: "nyc", name: "New York, NY", country: "US", currency: "USD", timezone: "America/New_York" }];
+const CITIES = [
+  { slug: "nyc", name: "New York, NY", country: "US", currency: "USD", timezone: "America/New_York" },
+  { slug: "paris", name: "Paris, France", country: "FR", currency: "EUR", timezone: "Europe/Paris" },
+];
+
+const LEGS = [{ id: "leg-paris", city: "paris", destination: "Paris, France", startDate: null, endDate: null, order: 0 }];
 
 const PLACE = {
   id: "p1",
@@ -170,5 +175,35 @@ describe("DiscoverScreen", () => {
     await waitFor(() => expect(screen.getByText("The Met")).toBeInTheDocument());
     expect(screen.queryByText("Free")).not.toBeInTheDocument();
     expect(screen.queryByText(/^\$/)).not.toBeInTheDocument();
+  });
+
+  it("shows no city switcher for a single-city trip (no legs)", async () => {
+    listPlaces.mockResolvedValue([PLACE]);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+
+    renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
+
+    await waitFor(() => expect(screen.getByText("The Met")).toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: /paris/i })).not.toBeInTheDocument();
+  });
+
+  it("shows a city switcher for a multi-city trip and re-fetches places for whichever city is selected", async () => {
+    listPlaces.mockImplementation((city: string) =>
+      Promise.resolve(city === "paris" ? [{ ...PLACE, id: "p2", city: "paris", name: "Louvre" }] : [PLACE])
+    );
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    renderWithClient(
+      <DiscoverScreen city="nyc" legs={LEGS} interests={[]} tripId="t1" addedIds={new Set()} />
+    );
+
+    await waitFor(() => expect(screen.getByText("The Met")).toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: "Paris, France" }));
+
+    await waitFor(() => expect(screen.getByText("Louvre")).toBeInTheDocument());
+    expect(screen.queryByText("The Met")).not.toBeInTheDocument();
   });
 });
