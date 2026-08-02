@@ -1,17 +1,8 @@
-import { useCities, useItinerary, useMoveItem, useTrip } from "../hooks";
+import { daysBetween } from "../dateUtils";
+import { useAutoFillItinerary, useCities, useItinerary, useMoveItem, useTrip } from "../hooks";
 import { ItineraryStop } from "../types";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
-
-// Mirrors the backend's tripLengthDays (trips.service.ts) -- the move-day
-// dropdown for a given item must offer exactly the days that are actually
-// valid for it (its own leg's date range), or the backend will reject the
-// selection with a 400.
-function daysBetween(startDate: string | null | undefined, endDate: string | null | undefined): number {
-  if (!startDate || !endDate) return 1;
-  const days = Math.round((new Date(endDate).getTime() - new Date(startDate).getTime()) / DAY_MS) + 1;
-  return Math.max(1, days);
-}
 
 // Trip dates are stored as UTC-midnight timestamps with no time-of-day
 // meaning — rendering them in the visitor's own browser timezone can shift
@@ -35,10 +26,28 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
   const { data: trip } = useTrip(tripId);
   const { data: cities } = useCities();
   const moveItem = useMoveItem(tripId);
+  const autoFill = useAutoFillItinerary(tripId);
 
   if (isLoading) return <p className="text-sm text-ink-soft">Loading…</p>;
   if (!days || days.length === 0) {
-    return <p className="text-sm text-ink-faint">Add places from Discover to build your itinerary.</p>;
+    return (
+      <div className="space-y-3">
+        <p className="text-sm text-ink-faint">Add places from Discover to build your itinerary.</p>
+        {trip && (
+          <button
+            type="button"
+            onClick={() => autoFill.mutate(trip)}
+            disabled={autoFill.isPending}
+            className="w-full border border-accent py-2.5 text-sm font-semibold text-accent disabled:opacity-60"
+          >
+            {autoFill.isPending ? "Building a starter itinerary…" : "Or auto-fill a starter itinerary →"}
+          </button>
+        )}
+        {autoFill.isError && (
+          <p className="text-xs text-stale">Couldn't build a starter itinerary — try again in a moment.</p>
+        )}
+      </div>
+    );
   }
 
   // Each stop belongs to its OWN city (its leg, or the trip's primary city

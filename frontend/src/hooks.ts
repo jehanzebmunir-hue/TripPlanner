@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "./api";
-import { BudgetTier } from "./types";
+import { pickStarterPlaces, starterTargetCount } from "./autoFill";
+import { daysBetween } from "./dateUtils";
+import { BudgetTier, Trip } from "./types";
 
 export function useCities() {
   return useQuery({ queryKey: ["cities"], queryFn: () => api.listCities(), staleTime: Infinity });
@@ -94,6 +96,38 @@ export function useRemoveItem(tripId?: string) {
   const invalidate = useInvalidateTrip(tripId);
   return useMutation({
     mutationFn: (placeId: string) => api.removeItem(tripId!, placeId),
+    onSuccess: invalidate,
+  });
+}
+
+// Real places only, picked by the same confidence/category data already
+// shown on every card -- diversified across categories, preferring
+// verified over aging/stale within each. Not one API call: fetches each of
+// the trip's cities' real place lists, then adds the picks one at a time
+// via the exact same addItem the manual "Add to trip" button uses -- same
+// permission checks, same leg inference, same day-assignment, nothing
+// duplicated. Sequential, not parallel, since addTripItem's day-assignment
+// reads a live count before writing; concurrent calls could race on it.
+export function useAutoFillItinerary(tripId?: string) {
+  const invalidate = useInvalidateTrip(tripId);
+  return useMutation({
+    mutationFn: async (trip: Trip) => {
+      const addedIds = new Set(trip.items.map((i) => i.placeId));
+      const citiesInTrip = [
+        { slug: trip.city, startDate: trip.startDate, endDate: trip.endDate },
+        ...trip.legs.map((l) => ({ slug: l.city, startDate: l.startDate, endDate: l.endDate })),
+      ];
+
+      for (const c of citiesInTrip) {
+        const places = await api.listPlaces(c.slug);
+        const target = starterTargetCount(daysBetween(c.startDate, c.endDate));
+        const picked = pickStarterPlaces(places, target, addedIds);
+        for (const place of picked) {
+          await api.addItem(tripId!, place.id);
+          addedIds.add(place.id);
+        }
+      }
+    },
     onSuccess: invalidate,
   });
 }

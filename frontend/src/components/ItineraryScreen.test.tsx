@@ -1,4 +1,5 @@
 import { screen, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithClient } from "../test/renderWithClient";
 import { ItineraryScreen } from "./ItineraryScreen";
@@ -6,12 +7,16 @@ import { ItineraryScreen } from "./ItineraryScreen";
 const getItinerary = vi.fn();
 const listCities = vi.fn();
 const getTrip = vi.fn();
+const listPlaces = vi.fn();
+const addItem = vi.fn();
 
 vi.mock("../api", () => ({
   api: {
     getItinerary: (...args: unknown[]) => getItinerary(...args),
     listCities: (...args: unknown[]) => listCities(...args),
     getTrip: (...args: unknown[]) => getTrip(...args),
+    listPlaces: (...args: unknown[]) => listPlaces(...args),
+    addItem: (...args: unknown[]) => addItem(...args),
     moveItem: vi.fn(),
   },
 }));
@@ -55,6 +60,25 @@ describe("ItineraryScreen", () => {
 
     await waitFor(() => {
       expect(screen.getByText(/add places from discover/i)).toBeInTheDocument();
+    });
+  });
+
+  it("auto-fills a starter itinerary by fetching this city's places and adding real picks", async () => {
+    getItinerary.mockResolvedValue([]);
+    listCities.mockResolvedValue(CITIES);
+    getTrip.mockResolvedValue(TRIP);
+    listPlaces.mockResolvedValue([PLACE, { ...PLACE, id: "p2", category: "food-dining" }]);
+    addItem.mockResolvedValue({});
+
+    renderWithClient(<ItineraryScreen tripId="trip1" />);
+
+    const button = await screen.findByRole("button", { name: /auto-fill a starter itinerary/i });
+    await userEvent.click(button);
+
+    await waitFor(() => {
+      expect(listPlaces).toHaveBeenCalledWith("tokyo");
+      expect(addItem).toHaveBeenCalledWith("trip1", "p1");
+      expect(addItem).toHaveBeenCalledWith("trip1", "p2");
     });
   });
 
