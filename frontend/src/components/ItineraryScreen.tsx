@@ -1,8 +1,9 @@
 import { TFunction } from "i18next";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { daysBetween } from "../dateUtils";
 import { useAutoFillItinerary, useCities, useItinerary, useMoveItem, useTrip } from "../hooks";
-import { ItineraryStop } from "../types";
+import { ItineraryDay, ItineraryStop } from "../types";
 import { Skeleton } from "./Skeleton";
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -31,6 +32,13 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
   const { data: cities } = useCities();
   const moveItem = useMoveItem(tripId);
   const autoFill = useAutoFillItinerary(tripId);
+  // Drag-and-drop is a progressive enhancement on top of the day-move
+  // dropdown below, not a replacement for it -- HTML5 drag events don't
+  // work on touch devices, so the dropdown stays the only way to move a
+  // stop on mobile. draggedStop is looked up fresh on each dragstart
+  // rather than carried in dataTransfer, since it's already all in memory.
+  const [draggedStop, setDraggedStop] = useState<ItineraryStop | null>(null);
+  const [dragOverDayIndex, setDragOverDayIndex] = useState<number | null>(null);
 
   if (isLoading) {
     return (
@@ -85,7 +93,7 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
   // Showing the real date instead of either number sidesteps the
   // mismatch entirely rather than risking a dropdown that reads "Day 1"
   // directly under a "Day 3" heading.
-  function dayOptionsFor(stop: ItineraryStop): { value: number; label: string }[] {
+  function dayOptionsFor(stop: ItineraryStop): { value: number; label: string; date: string | null }[] {
     const leg = stop.legId ? trip?.legs.find((l) => l.id === stop.legId) : undefined;
     const start = leg ? leg.startDate : trip?.startDate;
     const end = leg ? leg.endDate : trip?.endDate;
@@ -94,11 +102,33 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
 
     return Array.from({ length: totalDays }, (_, i) => {
       const value = i + 1;
-      if (!start) return { value, label: t("itinerary.dayLabel", { day: value }) };
+      if (!start) return { value, label: t("itinerary.dayLabel", { day: value }), date: null };
       const date = new Date(new Date(start).getTime() + i * DAY_MS);
       const label = date.toLocaleDateString(undefined, { month: "short", day: "numeric", timeZone: timezone });
-      return { value, label };
+      return { value, label, date: date.toISOString() };
     });
+  }
+
+  // What day-index a drag-and-drop of this stop onto that day group should
+  // resolve to -- the same leg-relative value the "move to day" dropdown
+  // already computes for this exact stop, just picked by matching real
+  // calendar dates instead of a menu selection. Returns null when the drop
+  // target isn't a real day for this stop's own leg (e.g. a Rome-leg item
+  // dropped onto a date outside Rome's own range) -- the same constraint
+  // the dropdown already enforces, just silently declining the drop rather
+  // than allowing an invalid move.
+  function targetDayIndexFor(stop: ItineraryStop, targetDay: ItineraryDay): number | null {
+    if (targetDay.date) {
+      const targetKey = targetDay.date.slice(0, 10);
+      const match = dayOptionsFor(stop).find((o) => o.date?.slice(0, 10) === targetKey);
+      return match ? match.value : null;
+    }
+    // Undated trips group days by (legId, dayIndex) directly (see backend
+    // buildItinerary) -- valid only when the target day's own stops share
+    // this stop's leg, and the target dayIndex comes straight from them.
+    const targetStop = targetDay.stops[0];
+    if (!targetStop || targetStop.legId !== stop.legId) return null;
+    return targetStop.itemDayIndex;
   }
 
   return (
@@ -118,7 +148,23 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
           : "UTC";
 
         return (
-          <div key={day.dayIndex}>
+          <div
+            key={day.dayIndex}
+            onDragOver={(e) => {
+              if (!draggedStop || targetDayIndexFor(draggedStop, day) === null) return;
+              e.preventDefault(); // required for onDrop to fire at all
+              setDragOverDayIndex(day.dayIndex);
+            }}
+            onDragLeave={() => setDragOverDayIndex((cur) => (cur === day.dayIndex ? null : cur))}
+            onDrop={(e) => {
+              e.preventDefault();
+              setDragOverDayIndex(null);
+              if (!draggedStop) return;
+              const targetDayIndex = targetDayIndexFor(draggedStop, day);
+              if (targetDayIndex !== null) moveItem.mutate({ placeId: draggedStop.place.id, dayIndex: targetDayIndex });
+            }}
+            className={dragOverDayIndex === day.dayIndex ? "outline outline-2 outline-accent" : undefined}
+          >
             <h3 className="mb-3 font-serif text-lg">{formatDayLabel(t, day.dayIndex, day.date, dayTimezone)}</h3>
 
             {day.stops.map((s) => (
@@ -128,7 +174,17 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
                     {t("itinerary.transit", { minutes: s.transitFromPrevious.minutes, mode: s.transitFromPrevious.mode })}
                   </p>
                 )}
-                <div className="mb-3 border border-line bg-paper-raised p-3.5">
+                <div
+                  draggable
+                  onDragStart={() => setDraggedStop(s)}
+                  onDragEnd={() => {
+                    setDraggedStop(null);
+                    setDragOverDayIndex(null);
+                  }}
+                  className={`mb-3 cursor-grab border border-line bg-paper-raised p-3.5 active:cursor-grabbing ${
+                    draggedStop?.place.id === s.place.id ? "opacity-50" : ""
+                  }`}
+                >
                   <div className="mb-1 flex items-start justify-between gap-2">
                     <h4 className="text-sm font-bold">{s.place.name}</h4>
                     <select

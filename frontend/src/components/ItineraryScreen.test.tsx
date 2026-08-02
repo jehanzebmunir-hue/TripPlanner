@@ -1,6 +1,6 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { renderWithClient } from "../test/renderWithClient";
 import { ItineraryScreen } from "./ItineraryScreen";
 
@@ -9,6 +9,7 @@ const listCities = vi.fn();
 const getTrip = vi.fn();
 const listPlaces = vi.fn();
 const addItem = vi.fn();
+const moveItem = vi.fn();
 
 vi.mock("../api", () => ({
   api: {
@@ -17,7 +18,7 @@ vi.mock("../api", () => ({
     getTrip: (...args: unknown[]) => getTrip(...args),
     listPlaces: (...args: unknown[]) => listPlaces(...args),
     addItem: (...args: unknown[]) => addItem(...args),
-    moveItem: vi.fn(),
+    moveItem: (...args: unknown[]) => moveItem(...args),
   },
 }));
 
@@ -51,6 +52,10 @@ const PLACE = {
 };
 
 describe("ItineraryScreen", () => {
+  beforeEach(() => {
+    moveItem.mockReset();
+  });
+
   it("shows an empty-state message when there are no days yet", async () => {
     getItinerary.mockResolvedValue([]);
     listCities.mockResolvedValue(CITIES);
@@ -139,5 +144,70 @@ describe("ItineraryScreen", () => {
 
     // 2026-08-05T20:00Z is 2026-08-05 13:00 in LA (UTC-7 in August) -- still Aug 5, not Aug 6.
     await waitFor(() => expect(screen.getByText(/Day 1.*Aug 5/)).toBeInTheDocument());
+  });
+
+  it("moves a stop to a different day via drag-and-drop, calling the same moveItem the dropdown uses", async () => {
+    getItinerary.mockResolvedValue([
+      {
+        dayIndex: 1,
+        date: "2026-07-31T00:00:00.000Z",
+        stops: [{ place: PLACE, transitFromPrevious: null, legId: null, itemDayIndex: 1 }],
+      },
+      {
+        dayIndex: 2,
+        date: "2026-08-01T00:00:00.000Z",
+        stops: [{ place: { ...PLACE, id: "p2", name: "Tokyo Tower" }, transitFromPrevious: null, legId: null, itemDayIndex: 2 }],
+      },
+    ]);
+    listCities.mockResolvedValue(CITIES);
+    getTrip.mockResolvedValue(TRIP); // 2026-07-31 to 2026-08-02: a real 3-day range
+
+    renderWithClient(<ItineraryScreen tripId="trip1" />);
+    await waitFor(() => expect(screen.getByText("Senso-ji")).toBeInTheDocument());
+
+    const sourceCard = screen.getByText("Senso-ji").closest('[draggable="true"]') as HTMLElement;
+    const targetCard = screen.getByText("Tokyo Tower").closest('[draggable="true"]') as HTMLElement;
+    const targetDayGroup = targetCard.parentElement!.parentElement as HTMLElement;
+
+    fireEvent.dragStart(sourceCard);
+    fireEvent.dragOver(targetDayGroup);
+    fireEvent.drop(targetDayGroup);
+
+    // Day 2 of this range is 2026-08-01 -- the real date Senso-ji's own
+    // (leg-less, primary-trip) day options resolve that target date to.
+    await waitFor(() => expect(moveItem).toHaveBeenCalledWith("trip1", "p1", 2));
+  });
+
+  it("does not move a stop when dropped onto a day that isn't a real option for its own leg", async () => {
+    getItinerary.mockResolvedValue([
+      {
+        dayIndex: 1,
+        date: "2026-07-31T00:00:00.000Z",
+        stops: [{ place: PLACE, transitFromPrevious: null, legId: null, itemDayIndex: 1 }],
+      },
+      {
+        dayIndex: 2,
+        date: "2026-08-05T20:00:00.000Z", // outside the primary trip's own 07-31..08-02 range entirely
+        stops: [{ place: { ...PLACE, id: "p2", city: "la", name: "Griffith Observatory" }, transitFromPrevious: null, legId: "leg-la", itemDayIndex: 1 }],
+      },
+    ]);
+    listCities.mockResolvedValue(CITIES);
+    getTrip.mockResolvedValue({
+      ...TRIP,
+      legs: [{ id: "leg-la", city: "la", destination: "Los Angeles, CA", startDate: "2026-08-05T00:00:00.000Z", endDate: "2026-08-06T00:00:00.000Z", order: 0 }],
+    });
+
+    renderWithClient(<ItineraryScreen tripId="trip1" />);
+    await waitFor(() => expect(screen.getByText("Senso-ji")).toBeInTheDocument());
+
+    const sourceCard = screen.getByText("Senso-ji").closest('[draggable="true"]') as HTMLElement;
+    const targetCard = screen.getByText("Griffith Observatory").closest('[draggable="true"]') as HTMLElement;
+    const targetDayGroup = targetCard.parentElement!.parentElement as HTMLElement;
+
+    fireEvent.dragStart(sourceCard);
+    fireEvent.dragOver(targetDayGroup);
+    fireEvent.drop(targetDayGroup);
+
+    expect(moveItem).not.toHaveBeenCalled();
   });
 });
