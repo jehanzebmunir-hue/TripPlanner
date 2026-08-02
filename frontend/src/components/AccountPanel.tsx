@@ -1,4 +1,4 @@
-import { FormEvent, useState } from "react";
+import { FormEvent, RefObject, useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { api } from "../api";
 import { useAuth } from "../AuthContext";
@@ -6,6 +6,7 @@ import { useDeleteTrip, useMyTrips } from "../hooks";
 
 export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => void }) {
   const { t } = useTranslation();
+  const panelId = useId();
   const { user, loading, login, register, logout, deleteAccount } = useAuth();
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"login" | "register" | "reset">("login");
@@ -15,9 +16,39 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
   const [resetMessage, setResetMessage] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  // Which saved trip (by id) is one more click away from being deleted --
+  // per-trip, not a single boolean, since more than one trip can be listed
+  // at once. Matches account deletion's existing two-click pattern, which
+  // this previously didn't (a single click deleted a trip outright).
+  const [confirmingDeleteTripId, setConfirmingDeleteTripId] = useState<string | null>(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const firstFieldRef = useRef<HTMLInputElement | HTMLButtonElement>(null);
 
   const { data: myTrips } = useMyTrips(!!user && open);
   const deleteTrip = useDeleteTrip();
+
+  // Real dialog behavior for what's otherwise just an absolutely-positioned
+  // div: closing on Escape and on a click outside it, and moving focus in
+  // when it opens, rather than leaving a keyboard/screen-reader user
+  // stranded on the now-hidden toggle button.
+  useEffect(() => {
+    if (!open) return;
+    firstFieldRef.current?.focus();
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") setOpen(false);
+    }
+    function handleClickOutside(e: MouseEvent) {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open]);
 
   if (loading) return null;
 
@@ -60,18 +91,29 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
     }
   }
 
+  function handleDeleteTrip(tripId: string) {
+    if (confirmingDeleteTripId !== tripId) {
+      setConfirmingDeleteTripId(tripId);
+      return;
+    }
+    deleteTrip.mutate(tripId);
+    setConfirmingDeleteTripId(null);
+  }
+
   if (!user) {
     return (
-      <div className="relative">
+      <div className="relative" ref={containerRef}>
         <button
           type="button"
           onClick={() => setOpen((o) => !o)}
+          aria-expanded={open}
+          aria-controls={panelId}
           className="font-mono text-[10.5px] uppercase tracking-wide text-ink-faint underline"
         >
           {t("account.logIn")}
         </button>
         {open && (
-          <div className="absolute right-0 top-6 z-20 w-64 border border-line bg-paper-raised p-4 shadow-md">
+          <div id={panelId} className="absolute right-0 top-6 z-20 w-64 border border-line bg-paper-raised p-4 shadow-md">
             <div className="mb-3 flex gap-3 font-mono text-[11px] uppercase tracking-wide">
               <button
                 type="button"
@@ -99,7 +141,9 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
             {mode === "reset" ? (
               resetMessage ? (
                 <div className="space-y-2">
-                  <p className="text-xs text-ink-soft">{resetMessage}</p>
+                  <p role="status" className="text-xs text-ink-soft">
+                    {resetMessage}
+                  </p>
                   <button
                     type="button"
                     onClick={() => {
@@ -115,18 +159,23 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
                 <form onSubmit={handleSubmit} className="space-y-2">
                   <p className="text-xs text-ink-soft">{t("account.resetHint")}</p>
                   <input
+                    ref={firstFieldRef as RefObject<HTMLInputElement>}
                     type="email"
                     required
                     placeholder={t("account.email")}
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="w-full border border-line bg-paper px-2.5 py-1.5 text-[13px]"
+                    className="w-full border border-line bg-paper px-2.5 py-2 text-[13px]"
                   />
-                  {error && <p className="text-xs text-stale">{error}</p>}
+                  {error && (
+                    <p role="alert" className="text-xs text-stale">
+                      {error}
+                    </p>
+                  )}
                   <button
                     type="submit"
                     disabled={submitting}
-                    className="w-full bg-accent py-1.5 text-xs font-bold text-onaccent disabled:opacity-60"
+                    className="w-full bg-accent py-2 text-xs font-bold text-onaccent disabled:opacity-60"
                   >
                     {submitting ? t("account.submittingShort") : t("account.sendResetLink")}
                   </button>
@@ -142,12 +191,13 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
             ) : (
               <form onSubmit={handleSubmit} className="space-y-2">
                 <input
+                  ref={firstFieldRef as RefObject<HTMLInputElement>}
                   type="email"
                   required
                   placeholder={t("account.email")}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full border border-line bg-paper px-2.5 py-1.5 text-[13px]"
+                  className="w-full border border-line bg-paper px-2.5 py-2 text-[13px]"
                 />
                 <input
                   type="password"
@@ -156,13 +206,17 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
                   placeholder={t("account.password")}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full border border-line bg-paper px-2.5 py-1.5 text-[13px]"
+                  className="w-full border border-line bg-paper px-2.5 py-2 text-[13px]"
                 />
-                {error && <p className="text-xs text-stale">{error}</p>}
+                {error && (
+                  <p role="alert" className="text-xs text-stale">
+                    {error}
+                  </p>
+                )}
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="w-full bg-accent py-1.5 text-xs font-bold text-onaccent disabled:opacity-60"
+                  className="w-full bg-accent py-2 text-xs font-bold text-onaccent disabled:opacity-60"
                 >
                   {submitting ? t("account.submittingShort") : mode === "login" ? t("account.logIn") : t("account.createAccount")}
                 </button>
@@ -187,44 +241,54 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
   }
 
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <button
         type="button"
         onClick={() => {
           setOpen((o) => !o);
           setConfirmingDelete(false);
+          setConfirmingDeleteTripId(null);
         }}
+        aria-expanded={open}
+        aria-controls={panelId}
         className="font-mono text-[10.5px] uppercase tracking-wide text-ink-faint underline"
       >
         {t("account.myTripsLink", { name: user.email.split("@")[0] })}
       </button>
       {open && (
-        <div className="absolute right-0 top-6 z-20 w-72 border border-line bg-paper-raised p-4 shadow-md">
+        <div id={panelId} className="absolute right-0 top-6 z-20 w-72 border border-line bg-paper-raised p-4 shadow-md">
           <p className="mb-2 font-mono text-[10.5px] uppercase tracking-wide text-ink-faint">{t("account.myTrips")}</p>
           {(!myTrips || myTrips.length === 0) && <p className="mb-3 text-xs text-ink-faint">{t("account.noSavedTrips")}</p>}
           <div className="mb-3 space-y-1.5">
-            {myTrips?.map((t) => (
-              <div key={t.id} className="flex items-center gap-1.5">
+            {myTrips?.map((trip, i) => (
+              <div key={trip.id} className="flex items-center gap-1.5">
                 <button
+                  ref={i === 0 ? (firstFieldRef as RefObject<HTMLButtonElement>) : undefined}
                   type="button"
                   onClick={() => {
-                    onOpenTrip(t.id);
+                    onOpenTrip(trip.id);
                     setOpen(false);
                   }}
-                  className="flex-1 border border-line bg-paper px-2.5 py-1.5 text-left text-[13px] hover:border-accent"
+                  className="flex-1 border border-line bg-paper px-2.5 py-2 text-left text-[13px] hover:border-accent"
                 >
-                  {t.destination}
-                  {t.startDate && (
-                    <span className="ml-2 font-mono text-[11px] text-ink-faint">{t.startDate.slice(0, 10)}</span>
+                  {trip.destination}
+                  {trip.startDate && (
+                    <span className="ml-2 font-mono text-[11px] text-ink-faint">{trip.startDate.slice(0, 10)}</span>
                   )}
                 </button>
                 <button
                   type="button"
-                  aria-label={`Delete trip to ${t.destination}`}
-                  onClick={() => deleteTrip.mutate(t.id)}
-                  className="border border-line px-2 py-1.5 text-xs text-stale"
+                  aria-label={
+                    confirmingDeleteTripId === trip.id
+                      ? t("account.confirmDeleteTrip", { destination: trip.destination })
+                      : t("account.deleteTrip", { destination: trip.destination })
+                  }
+                  onClick={() => handleDeleteTrip(trip.id)}
+                  className={`shrink-0 border px-2 py-2 text-xs ${
+                    confirmingDeleteTripId === trip.id ? "border-stale bg-stale-bg text-stale" : "border-line text-stale"
+                  }`}
                 >
-                  ✕
+                  {confirmingDeleteTripId === trip.id ? t("account.confirmDeleteTripShort") : "✕"}
                 </button>
               </div>
             ))}
@@ -252,7 +316,11 @@ export function AccountPanel({ onOpenTrip }: { onOpenTrip: (tripId: string) => v
           {confirmingDelete && (
             <p className="mt-2 text-[11px] text-ink-faint">{t("account.deleteAccountHint")}</p>
           )}
-          {error && <p className="mt-2 text-xs text-stale">{error}</p>}
+          {error && (
+            <p role="alert" className="mt-2 text-xs text-stale">
+              {error}
+            </p>
+          )}
         </div>
       )}
     </div>

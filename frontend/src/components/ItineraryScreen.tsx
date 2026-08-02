@@ -46,7 +46,11 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
             {autoFill.isPending ? t("itinerary.autoFilling") : t("itinerary.autoFillButton")}
           </button>
         )}
-        {autoFill.isError && <p className="text-xs text-stale">{t("itinerary.autoFillError")}</p>}
+        {autoFill.isError && (
+          <p role="alert" className="text-xs text-stale">
+            {t("itinerary.autoFillError")}
+          </p>
+        )}
       </div>
     );
   }
@@ -85,7 +89,14 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
 
   return (
     <div className="space-y-7">
+      <h2 className="sr-only">{t("app.tabs.itinerary")}</h2>
       <p className="text-sm text-ink-soft">{t("itinerary.splitEvenly")}</p>
+
+      {moveItem.isError && (
+        <p role="alert" className="border border-stale bg-stale-bg px-3 py-2 text-xs text-stale">
+          {t("itinerary.moveError")}
+        </p>
+      )}
 
       {days.map((day) => {
         const dayTimezone = day.stops[0]
@@ -94,7 +105,7 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
 
         return (
           <div key={day.dayIndex}>
-            <h2 className="mb-3 font-serif text-lg">{formatDayLabel(t, day.dayIndex, day.date, dayTimezone)}</h2>
+            <h3 className="mb-3 font-serif text-lg">{formatDayLabel(t, day.dayIndex, day.date, dayTimezone)}</h3>
 
             {day.stops.map((s) => (
               <div key={s.place.id}>
@@ -105,13 +116,14 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
                 )}
                 <div className="mb-3 border border-line bg-paper-raised p-3.5">
                   <div className="mb-1 flex items-start justify-between gap-2">
-                    <h3 className="text-sm font-bold">{s.place.name}</h3>
+                    <h4 className="text-sm font-bold">{s.place.name}</h4>
                     <select
                       value={s.itemDayIndex}
                       onChange={(e) =>
                         moveItem.mutate({ placeId: s.place.id, dayIndex: Number(e.target.value) })
                       }
-                      className="border border-line bg-paper px-1.5 py-0.5 font-mono text-[11px] text-ink-soft"
+                      aria-label={t("itinerary.moveTo", { place: s.place.name })}
+                      className="border border-line bg-paper px-2 py-1.5 font-mono text-[11px] text-ink-soft"
                     >
                       {dayOptionsFor(s).map((opt) => (
                         <option key={opt.value} value={opt.value}>
@@ -126,7 +138,7 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
                       href={s.place.bookingRef}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-block bg-accent px-3 py-1.5 text-xs font-bold text-onaccent"
+                      className="inline-block bg-accent px-3 py-2 text-xs font-bold text-onaccent"
                     >
                       {s.place.bookingLabel ?? t("itinerary.book")} ↗
                     </a>

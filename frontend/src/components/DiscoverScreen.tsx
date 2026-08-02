@@ -47,7 +47,7 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
   // day, so there's nothing to gain from asking more than once here either.
   const { data: exchangeRate } = useExchangeRate(currency, homeCurrency ?? undefined);
 
-  if (isLoading) return <p className="text-sm text-ink-soft">Loading…</p>;
+  if (isLoading) return <p className="text-sm text-ink-soft">{t("common.loading")}</p>;
 
   const trimmedQuery = query.trim().toLowerCase();
   const filtered = (places ?? [])
@@ -62,6 +62,7 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
 
   return (
     <div className="space-y-3">
+      <h2 className="sr-only">{t("app.tabs.discover")}</h2>
       {allCitySlugs.length > 1 && (
         <div className="flex flex-wrap gap-1.5">
           {allCitySlugs.map((slug) => (
@@ -85,6 +86,12 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
         </div>
       )}
 
+      {(addItem.isError || removeItem.isError || confirm.isError) && (
+        <p role="alert" className="border border-stale bg-stale-bg px-3 py-2 text-xs text-stale">
+          {t("discover.actionError")}
+        </p>
+      )}
+
       <p className="mb-1 text-sm text-ink-soft">
         {t("discover.matchedTo", {
           categories: interests.map(categoryLabel).join(` ${t("common.and")} `) || t("discover.allCategories"),
@@ -96,7 +103,7 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder={t("discover.searchPlaceholder")}
-        aria-label="Search places"
+        aria-label={t("discover.searchLabel")}
         className="w-full border border-line bg-paper-raised px-3 py-2 text-sm"
       />
 

@@ -94,11 +94,12 @@ export function PlaceCard({
           <button
             onClick={onToggleAdd}
             type="button"
-            className={`border px-3.5 py-1.5 text-xs font-semibold ${
+            aria-pressed={added}
+            className={`border px-3.5 py-2 text-xs font-semibold ${
               added ? "border-verified bg-verified-bg text-verified" : "border-accent text-accent"
             }`}
           >
-            {added ? t("placeCard.added") : t("placeCard.addToTrip")}
+            <span role="status">{added ? t("placeCard.added") : t("placeCard.addToTrip")}</span>
           </button>
         )}
       </div>

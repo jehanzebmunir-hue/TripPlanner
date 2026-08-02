@@ -84,4 +84,31 @@ describe("FindDestinationPanel", () => {
       expect(screen.getByText(/no ingested cities match/i)).toBeInTheDocument();
     });
   });
+
+  it("moves focus to the first vibe option on open and reports its expanded state via aria-expanded", async () => {
+    listVibes.mockResolvedValue(VIBES);
+    const user = userEvent.setup();
+
+    renderWithClient(<FindDestinationPanel onPick={vi.fn()} />);
+    const opener = screen.getByText(/not sure yet\? find a destination/i);
+    expect(opener).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(opener);
+
+    await waitFor(() => expect(screen.getByText("History & Culture")).toHaveFocus());
+    expect(screen.getByRole("button", { name: /close/i })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("closes on Escape", async () => {
+    listVibes.mockResolvedValue(VIBES);
+    const user = userEvent.setup();
+
+    renderWithClient(<FindDestinationPanel onPick={vi.fn()} />);
+    await user.click(screen.getByText(/not sure yet\? find a destination/i));
+    await waitFor(() => expect(screen.getByText("History & Culture")).toHaveFocus());
+
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByText("History & Culture")).not.toBeInTheDocument();
+  });
 });

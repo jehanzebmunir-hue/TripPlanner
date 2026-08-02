@@ -37,7 +37,14 @@ export function ChecklistScreen({ tripId, city }: { tripId: string; city: string
 
   return (
     <div className="space-y-6">
+      <h2 className="sr-only">{t("app.tabs.checklist")}</h2>
       <p className="text-sm text-ink-soft">{t("checklist.subheading")}</p>
+
+      {toggle.isError && (
+        <p role="alert" className="border border-stale bg-stale-bg px-3 py-2 text-xs text-stale">
+          {t("checklist.toggleError")}
+        </p>
+      )}
 
       {groups.map((g) => (
         <div key={g.title}>
@@ -53,9 +60,11 @@ export function ChecklistScreen({ tripId, city }: { tripId: string; city: string
                   type="button"
                   onClick={() => saveForOffline(item.id)}
                   disabled={saving}
-                  className="shrink-0 border border-accent px-2.5 py-1 text-xs font-semibold text-accent disabled:opacity-60"
+                  className="shrink-0 border border-accent px-2.5 py-2 text-xs font-semibold text-accent disabled:opacity-60"
                 >
-                  {saving ? t("checklist.saving") : saved || item.checked ? t("checklist.saved") : t("checklist.saveNow")}
+                  <span role="status">
+                    {saving ? t("checklist.saving") : saved || item.checked ? t("checklist.saved") : t("checklist.saveNow")}
+                  </span>
                 </button>
               </div>
             ) : (
@@ -64,7 +73,7 @@ export function ChecklistScreen({ tripId, city }: { tripId: string; city: string
                   type="checkbox"
                   checked={item.checked}
                   onChange={(e) => toggle.mutate({ itemKey: item.id, checked: e.target.checked })}
-                  className="mt-0.5 accent-accent"
+                  className="mt-0.5 h-4 w-4 accent-accent"
                 />
                 <div>
                   <div className={`text-[13.5px] ${item.checked ? "text-ink-faint line-through" : ""}`}>

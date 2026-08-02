@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useRecommendDestinations, useVibes } from "../hooks";
 import { BudgetTier } from "../types";
@@ -22,19 +22,27 @@ interface Props {
 // ways into the app" for the full reasoning).
 export function FindDestinationPanel({ onPick }: Props) {
   const { t } = useTranslation();
+  const panelId = useId();
   const [open, setOpen] = useState(false);
   const [vibeSlug, setVibeSlug] = useState<string>("");
   const [budgetTier, setBudgetTier] = useState<BudgetTier | "">("");
+  const firstVibeRef = useRef<HTMLButtonElement>(null);
 
   const { data: vibes } = useVibes();
   const { data: matches, isLoading } = useRecommendDestinations(vibeSlug || undefined, budgetTier || undefined, open);
+
+  useEffect(() => {
+    if (open) firstVibeRef.current?.focus();
+  }, [open]);
 
   if (!open) {
     return (
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="text-left font-mono text-[11.5px] uppercase tracking-wide text-accent underline"
+        aria-expanded={false}
+        aria-controls={panelId}
+        className="flex w-full items-center justify-center gap-1.5 border border-dashed border-line py-2.5 text-xs font-semibold text-ink-soft hover:border-accent hover:text-accent"
       >
         {t("findDestination.opener")}
       </button>
@@ -42,24 +50,37 @@ export function FindDestinationPanel({ onPick }: Props) {
   }
 
   return (
-    <div className="border border-line bg-paper-raised p-4">
+    <div
+      id={panelId}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") setOpen(false);
+      }}
+      className="border border-line bg-paper-raised p-4"
+    >
       <div className="mb-3 flex items-start justify-between gap-2">
         <div>
           <h3 className="font-serif text-base">{t("findDestination.heading")}</h3>
           <p className="text-xs text-ink-soft">{t("findDestination.subheading")}</p>
         </div>
-        <button type="button" onClick={() => setOpen(false)} className="font-mono text-[11px] text-ink-faint">
+        <button
+          type="button"
+          onClick={() => setOpen(false)}
+          aria-expanded={true}
+          aria-controls={panelId}
+          className="px-1 py-1 font-mono text-[11px] text-ink-faint"
+        >
           {t("common.close")}
         </button>
       </div>
 
       <div className="mb-3 flex flex-wrap gap-2">
-        {vibes?.map((v) => (
+        {vibes?.map((v, i) => (
           <button
             key={v.slug}
+            ref={i === 0 ? firstVibeRef : undefined}
             type="button"
             onClick={() => setVibeSlug(vibeSlug === v.slug ? "" : v.slug)}
-            className={`border px-3 py-1.5 text-[12.5px] ${
+            className={`border px-3 py-2 text-[12.5px] ${
               vibeSlug === v.slug ? "border-accent bg-accent text-onaccent" : "border-line bg-paper text-ink-soft"
             }`}
           >

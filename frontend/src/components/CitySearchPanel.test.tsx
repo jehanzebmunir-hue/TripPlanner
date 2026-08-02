@@ -82,4 +82,27 @@ describe("CitySearchPanel", () => {
 
     await waitFor(() => expect(screen.getByText(/no matches found/i)).toBeInTheDocument());
   });
+
+  it("moves focus into the search input on open and reports its expanded state via aria-expanded", async () => {
+    const user = userEvent.setup();
+    render(<CitySearchPanel onPick={vi.fn()} />);
+
+    const opener = screen.getByText(/not on the list\? search any place/i);
+    expect(opener).toHaveAttribute("aria-expanded", "false");
+
+    await user.click(opener);
+
+    await waitFor(() => expect(screen.getByLabelText("Search any place")).toHaveFocus());
+    expect(screen.getByRole("button", { name: /close/i })).toHaveAttribute("aria-expanded", "true");
+  });
+
+  it("closes on Escape from within the search input", async () => {
+    const user = userEvent.setup();
+    render(<CitySearchPanel onPick={vi.fn()} />);
+
+    await user.click(screen.getByText(/not on the list\? search any place/i));
+    await user.keyboard("{Escape}");
+
+    expect(screen.queryByLabelText("Search any place")).not.toBeInTheDocument();
+  });
 });

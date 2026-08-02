@@ -75,7 +75,13 @@ export default function App() {
   const addedIds = new Set(trip?.items.map((i) => i.placeId) ?? []);
 
   return (
-    <div className="mx-auto flex min-h-screen max-w-[460px] flex-col">
+    <div className="mx-auto flex min-h-screen max-w-[460px] flex-col sm:max-w-[600px] md:max-w-[720px]">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:bg-accent focus:px-3 focus:py-2 focus:text-onaccent"
+      >
+        {t("app.skipToContent")}
+      </a>
       {!online && (
         <div className="bg-aging-bg px-5 py-1.5 text-center font-mono text-[11px] uppercase tracking-wide text-aging">
           {t("app.offline")}
@@ -91,7 +97,7 @@ export default function App() {
                 onClick={copyLink}
                 className="font-mono text-[10.5px] uppercase tracking-wide text-ink-faint underline"
               >
-                {copied ? t("app.copied") : t("app.copyLink")}
+                <span role="status">{copied ? t("app.copied") : t("app.copyLink")}</span>
               </button>
             )}
             <div className="flex gap-1 font-mono text-[10.5px] uppercase tracking-wide text-ink-faint" aria-label={t("app.language")}>
@@ -100,7 +106,8 @@ export default function App() {
                   key={lang}
                   type="button"
                   onClick={() => setLanguage(lang)}
-                  className={i18n.language === lang ? "text-accent underline" : "underline"}
+                  aria-pressed={i18n.language === lang}
+                  className={`px-1 py-1 ${i18n.language === lang ? "text-accent underline" : "underline"}`}
                 >
                   {lang.toUpperCase()}
                 </button>
@@ -123,11 +130,19 @@ export default function App() {
         </p>
       </header>
 
-      <nav className="sticky top-[86px] z-10 flex gap-0.5 border-b border-line bg-paper px-5 pt-2.5">
+      <nav
+        role="tablist"
+        aria-label={t("app.tagline")}
+        className="sticky top-[86px] z-10 flex gap-0.5 border-b border-line bg-paper px-5 pt-2.5"
+      >
         {TABS.map((tabName) => (
           <button
             key={tabName}
             type="button"
+            role="tab"
+            id={`tab-${tabName}`}
+            aria-selected={tab === tabName}
+            aria-controls="main-content"
             onClick={() => setTab(tabName)}
             className={`flex-1 border-b-2 px-1 pb-3 pt-2.5 font-mono text-[12.5px] capitalize tracking-wide ${
               tab === tabName ? "border-accent text-ink" : "border-transparent text-ink-faint"
@@ -143,7 +158,13 @@ export default function App() {
         ))}
       </nav>
 
-      <main className="flex-1 px-5 py-5">
+      <main
+        id="main-content"
+        role="tabpanel"
+        aria-labelledby={`tab-${tab}`}
+        tabIndex={-1}
+        className="flex-1 px-5 py-5"
+      >
         {tab === "setup" && (
           <SetupScreen interests={interests} onInterestsChange={setInterests} onCreated={handleCreated} />
         )}
