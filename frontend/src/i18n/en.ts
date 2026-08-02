@@ -80,6 +80,8 @@ export const en = {
   discover: {
     degradedBanner: "Event data may be temporarily outdated — {{adapters}} couldn't be reached on the last attempt. Everything else here is unaffected.",
     actionError: "Something went wrong — try again.",
+    removed: "Removed {{name}}",
+    undo: "Undo",
     matchedTo: "Matched to {{categories}}. Every card shows when it was last confirmed.",
     allCategories: "all categories",
     searchPlaceholder: "Search this list by name…",

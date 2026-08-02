@@ -8,6 +8,8 @@ const listPlaces = vi.fn();
 const getCityHealth = vi.fn();
 const listCities = vi.fn();
 const getExchangeRate = vi.fn().mockResolvedValue({ from: "USD", to: "USD", rate: null });
+const addItem = vi.fn();
+const removeItem = vi.fn();
 
 vi.mock("../api", () => ({
   api: {
@@ -15,6 +17,8 @@ vi.mock("../api", () => ({
     getCityHealth: (...args: unknown[]) => getCityHealth(...args),
     listCities: (...args: unknown[]) => listCities(...args),
     getExchangeRate: (...args: unknown[]) => getExchangeRate(...args),
+    addItem: (...args: unknown[]) => addItem(...args),
+    removeItem: (...args: unknown[]) => removeItem(...args),
     confirmPlace: vi.fn(),
   },
 }));
@@ -205,5 +209,27 @@ describe("DiscoverScreen", () => {
 
     await waitFor(() => expect(screen.getByText("Louvre")).toBeInTheDocument());
     expect(screen.queryByText("The Met")).not.toBeInTheDocument();
+  });
+
+  it("offers a real Undo after removing a place, and re-adds it on click", async () => {
+    listPlaces.mockResolvedValue([PLACE]);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+    removeItem.mockResolvedValue(undefined);
+    addItem.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+
+    renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set(["p1"])} />);
+    await waitFor(() => expect(screen.getByText("The Met")).toBeInTheDocument());
+
+    await user.click(screen.getByRole("button", { name: /added/i }));
+
+    expect(removeItem).toHaveBeenCalledWith("t1", "p1");
+    expect(screen.getByText(/removed the met/i)).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: /undo/i }));
+
+    expect(addItem).toHaveBeenCalledWith("t1", "p1");
+    expect(screen.queryByText(/removed the met/i)).not.toBeInTheDocument();
   });
 });

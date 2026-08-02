@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CATEGORIES } from "../categories";
 import {
@@ -10,9 +10,13 @@ import {
   usePlaces,
   useRemoveItem,
 } from "../hooks";
-import { TripLeg } from "../types";
+import { Place, TripLeg } from "../types";
 import { PlaceCard } from "./PlaceCard";
 import { PlaceCardSkeleton } from "./Skeleton";
+
+// How long an "Undo" offer stays live after removing a place -- long enough
+// to catch a misclick, short enough not to leave a stale toast around.
+const UNDO_WINDOW_MS = 6000;
 
 interface Props {
   city: string;
@@ -47,6 +51,36 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
   // the backend already caches a real rate at most once per pair per UTC
   // day, so there's nothing to gain from asking more than once here either.
   const { data: exchangeRate } = useExchangeRate(currency, homeCurrency ?? undefined);
+
+  // The removal itself already happened (same real removeItem mutation as
+  // before) -- this only tracks the single most recent one so a real
+  // "Undo" can re-add it within a short window, the same pattern as a
+  // Gmail-style "Archived · Undo" toast. Removing a second place before
+  // undoing the first just lets the first one's window quietly expire,
+  // rather than trying to track more than one pending undo at a time.
+  const [lastRemoved, setLastRemoved] = useState<{ placeId: string; name: string } | null>(null);
+
+  useEffect(() => {
+    if (!lastRemoved) return;
+    const timer = setTimeout(() => setLastRemoved(null), UNDO_WINDOW_MS);
+    return () => clearTimeout(timer);
+  }, [lastRemoved]);
+
+  function handleToggleAdd(place: Place) {
+    if (addedIds.has(place.id)) {
+      removeItem.mutate(place.id);
+      setLastRemoved({ placeId: place.id, name: place.name });
+    } else {
+      addItem.mutate(place.id);
+      if (lastRemoved?.placeId === place.id) setLastRemoved(null);
+    }
+  }
+
+  function handleUndo() {
+    if (!lastRemoved) return;
+    addItem.mutate(lastRemoved.placeId);
+    setLastRemoved(null);
+  }
 
   if (isLoading) {
     return (
@@ -106,6 +140,15 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
         </p>
       )}
 
+      {lastRemoved && (
+        <div role="status" className="flex items-center justify-between gap-2 border border-line bg-paper-raised px-3 py-2 text-xs">
+          <span className="text-ink-soft">{t("discover.removed", { name: lastRemoved.name })}</span>
+          <button type="button" onClick={handleUndo} className="shrink-0 px-1 py-1 font-semibold text-accent underline">
+            {t("discover.undo")}
+          </button>
+        </div>
+      )}
+
       <p className="mb-1 text-sm text-ink-soft">
         {t("discover.matchedTo", {
           categories: interests.map(categoryLabel).join(` ${t("common.and")} `) || t("discover.allCategories"),
@@ -139,7 +182,7 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
             currency={currency}
             homeCurrency={homeCurrency ?? undefined}
             exchangeRate={exchangeRate?.rate}
-            onToggleAdd={() => (addedIds.has(p.id) ? removeItem.mutate(p.id) : addItem.mutate(p.id))}
+            onToggleAdd={() => handleToggleAdd(p)}
             onConfirm={(vote) => confirm.mutate({ id: p.id, vote })}
           />
         ))}

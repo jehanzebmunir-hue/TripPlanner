@@ -82,6 +82,8 @@ export const es: TranslationResource = {
   discover: {
     degradedBanner: "Los datos de eventos pueden estar desactualizados temporalmente — no se pudo contactar a {{adapters}} en el último intento. Todo lo demás aquí no se ve afectado.",
     actionError: "Algo salió mal — inténtalo de nuevo.",
+    removed: "Se quitó {{name}}",
+    undo: "Deshacer",
     matchedTo: "Coincide con {{categories}}. Cada tarjeta muestra cuándo se confirmó por última vez.",
     allCategories: "todas las categorías",
     searchPlaceholder: "Busca en esta lista por nombre…",
