@@ -39,6 +39,45 @@ describe("overpassAdapter", () => {
     expect(init.headers["User-Agent"]).toBeTruthy();
   });
 
+  it("queries every tag type with its own per-tag result cap, not one combined cap", async () => {
+    fetchWithRetry.mockResolvedValue(response([]));
+    const { overpassAdapter } = await import("./overpass");
+
+    await overpassAdapter.run(CITY);
+
+    const body = decodeURIComponent(fetchWithRetry.mock.calls[0][1].body);
+    // Real reason this matters: a single combined `out body N` after a union
+    // of clauses returns results grouped by clause, so a common tag (e.g.
+    // theatres) could crowd out a rarer one (e.g. markets) before the cap is
+    // reached — verified live against the real Overpass API while building
+    // this. Each tag needs its own `out body` to stay represented.
+    ["tourism\"=\"attraction", "leisure\"=\"park", "historic\"=\"monument", "amenity\"=\"theatre", "amenity\"=\"marketplace"].forEach(
+      (fragment) => expect(body).toContain(fragment)
+    );
+    expect(body.match(/out body/g)?.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it("maps real OSM tags to this app's own category taxonomy, not one flat category for everything", async () => {
+    fetchWithRetry.mockResolvedValue(
+      response([
+        { type: "node", id: 1, lat: 1, lon: 1, tags: { name: "A Park", leisure: "park" } },
+        { type: "node", id: 2, lat: 1, lon: 1, tags: { name: "A Theatre", amenity: "theatre" } },
+        { type: "node", id: 3, lat: 1, lon: 1, tags: { name: "A Market", amenity: "marketplace" } },
+        { type: "node", id: 4, lat: 1, lon: 1, tags: { name: "A Monument", historic: "monument" } },
+        { type: "node", id: 5, lat: 1, lon: 1, tags: { name: "A Museum", tourism: "museum" } },
+      ])
+    );
+    const { overpassAdapter } = await import("./overpass");
+
+    const records = await overpassAdapter.run(CITY);
+
+    expect(records.find((r) => r.name === "A Park")?.category).toBe("outdoor-nature");
+    expect(records.find((r) => r.name === "A Theatre")?.category).toBe("arts-entertainment-nightlife");
+    expect(records.find((r) => r.name === "A Market")?.category).toBe("shopping");
+    expect(records.find((r) => r.name === "A Monument")?.category).toBe("sightseeing-culture");
+    expect(records.find((r) => r.name === "A Museum")?.category).toBe("sightseeing-culture");
+  });
+
   it("normalizes real elements, keeping only ones with a name and coordinates", async () => {
     fetchWithRetry.mockResolvedValue(
       response([

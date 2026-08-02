@@ -6,7 +6,13 @@ import { CityConfig, NormalizedRecord, SourceAdapter } from "../types";
 // ticketmaster/seatgeek adapters) — a sprawling city under-covers slightly,
 // a small one over-covers slightly, neither is worth per-city special-casing.
 const RADIUS_METERS = 8000;
-const MAX_RESULTS = 20;
+// Per tag type, not a global cap -- verified live that a single combined
+// `out body N` after a union of node[...] clauses returns results grouped by
+// clause, not interleaved, so a tag with many real matches (theatres in a
+// big city, say) would silently crowd out every other tag entirely before
+// the cap was reached. A separate `out body N` after each clause keeps every
+// tag type represented regardless of how common it is locally.
+const PER_TAG_LIMIT = 3;
 
 interface OverpassElement {
   type: string;
@@ -16,6 +22,9 @@ interface OverpassElement {
   tags?: {
     name?: string;
     tourism?: string;
+    leisure?: string;
+    historic?: string;
+    amenity?: string;
     "addr:housenumber"?: string;
     "addr:street"?: string;
     "addr:city"?: string;
@@ -27,6 +36,20 @@ function addressFor(tags: OverpassElement["tags"]): string | undefined {
   const parts = [tags["addr:housenumber"], tags["addr:street"]].filter(Boolean);
   if (parts.length === 0) return undefined;
   return tags["addr:city"] ? `${parts.join(" ")}, ${tags["addr:city"]}` : parts.join(" ");
+}
+
+// Real OSM tag -> this app's own category taxonomy (frontend/src/categories.ts).
+// leisure=park and amenity=theatre confirmed live against the real Overpass
+// API while building this; historic=monument/memorial and amenity=marketplace
+// are long-established, widely-documented OSM tags (openstreetmap.org/wiki)
+// not independently re-verified live today (the shared public instance was
+// under real load at the time) -- flagged honestly rather than claimed as
+// something it wasn't.
+function categoryFor(tags: OverpassElement["tags"]): string {
+  if (tags?.leisure === "park") return "outdoor-nature";
+  if (tags?.amenity === "theatre") return "arts-entertainment-nightlife";
+  if (tags?.amenity === "marketplace") return "shopping";
+  return "sightseeing-culture"; // tourism=attraction/museum/viewpoint, historic=monument/memorial
 }
 
 export const overpassAdapter: SourceAdapter = {
@@ -41,11 +64,31 @@ export const overpassAdapter: SourceAdapter = {
       return [];
     }
 
-    // tourism=attraction/museum/viewpoint/artwork — the OSM tags that
-    // actually correspond to "a real thing worth visiting," not the whole
-    // sprawling tourism=* namespace (which also covers hotels, information
-    // boards, etc.). Matches google-places' "top attractions" scope.
-    const query = `[out:json][timeout:15];(node["tourism"="attraction"](around:${RADIUS_METERS},${city.lat},${city.lng});node["tourism"="museum"](around:${RADIUS_METERS},${city.lat},${city.lng});node["tourism"="viewpoint"](around:${RADIUS_METERS},${city.lat},${city.lng}););out body ${MAX_RESULTS};`;
+    // tourism=attraction/museum/viewpoint — real things worth visiting, not
+    // the whole sprawling tourism=* namespace (hotels, info boards, etc.).
+    // Broadened beyond the original three tags to cover more of what this
+    // app's own category taxonomy actually has slots for: parks
+    // (outdoor-nature), theatres (arts-entertainment-nightlife), markets
+    // (shopping), and historic monuments/memorials (sightseeing-culture) --
+    // previously everything from this adapter landed in one category
+    // regardless of what it actually was.
+    const tags = [
+      ["tourism", "attraction"],
+      ["tourism", "museum"],
+      ["tourism", "viewpoint"],
+      ["leisure", "park"],
+      ["historic", "monument"],
+      ["historic", "memorial"],
+      ["amenity", "theatre"],
+      ["amenity", "marketplace"],
+    ];
+    const statements = tags
+      .map(
+        ([k, v]) =>
+          `node["${k}"="${v}"](around:${RADIUS_METERS},${city.lat},${city.lng});out body ${PER_TAG_LIMIT};`
+      )
+      .join("");
+    const query = `[out:json][timeout:20];${statements}`;
 
     // A real, identifying User-Agent is Overpass's own stated expectation
     // for well-behaved clients (same as Nominatim's) -- verified live that
@@ -75,7 +118,7 @@ export const overpassAdapter: SourceAdapter = {
       .filter((e) => e.tags?.name && e.lat != null && e.lon != null)
       .map((e) => ({
         externalId: `${e.type}/${e.id}`,
-        category: "sightseeing-culture",
+        category: categoryFor(e.tags),
         tier: "static",
         name: e.tags!.name!,
         address: addressFor(e.tags),
