@@ -51,6 +51,13 @@ export interface CreateTripInput {
   startDate?: string;
   endDate?: string;
   interests: string[];
+  homeCurrency?: string;
+}
+
+export interface ExchangeRateResponse {
+  from: string;
+  to: string;
+  rate: number | null;
 }
 
 export const api = {
@@ -81,6 +88,8 @@ export const api = {
     return request<DestinationMatch[]>(`/recommend-destination${qs ? `?${qs}` : ""}`);
   },
   listPlaces: (city: string) => request<Place[]>(`/places?city=${encodeURIComponent(city)}`),
+  getExchangeRate: (from: string, to: string) =>
+    request<ExchangeRateResponse>(`/exchange-rate?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
   confirmPlace: (id: string, vote: "valid" | "invalid") =>
     request<Place>(`/places/${id}/confirm`, { method: "POST", body: JSON.stringify({ vote }) }),
   createTrip: (input: CreateTripInput) =>

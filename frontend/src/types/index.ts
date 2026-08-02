@@ -39,6 +39,7 @@ export interface Trip {
   startDate?: string | null;
   endDate?: string | null;
   interests: string[];
+  homeCurrency?: string | null;
   items: TripItem[];
 }
 

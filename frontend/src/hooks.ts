@@ -22,6 +22,18 @@ export function usePlaces(city: string) {
   return useQuery({ queryKey: ["places", city], queryFn: () => api.listPlaces(city), enabled: !!city });
 }
 
+export function useExchangeRate(from?: string, to?: string) {
+  return useQuery({
+    queryKey: ["exchange-rate", from, to],
+    queryFn: () => api.getExchangeRate(from!, to!),
+    // Same currency needs no request at all, and the backend already caches
+    // real pairs per UTC day -- no reason to refetch more often than that
+    // client-side either.
+    enabled: !!from && !!to && from !== to,
+    staleTime: 60 * 60 * 1000,
+  });
+}
+
 export function useCityHealth(city: string) {
   return useQuery({
     queryKey: ["city-health", city],

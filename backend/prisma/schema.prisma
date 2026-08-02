@@ -139,6 +139,11 @@ model Trip {
   startDate   DateTime?
   endDate     DateTime?
   interests   String     @default("[]")
+  // Set once at trip creation (SetupScreen), same as city/dates -- no edit
+  // flow exists for those either. null = traveler didn't pick one (or this
+  // trip predates the feature); the UI shows native prices only in that
+  // case, same as it always has, rather than guessing a currency.
+  homeCurrency String?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   userId      String?

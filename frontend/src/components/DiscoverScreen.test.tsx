@@ -6,12 +6,14 @@ import { DiscoverScreen } from "./DiscoverScreen";
 const listPlaces = vi.fn();
 const getCityHealth = vi.fn();
 const listCities = vi.fn();
+const getExchangeRate = vi.fn().mockResolvedValue({ from: "USD", to: "USD", rate: null });
 
 vi.mock("../api", () => ({
   api: {
     listPlaces: (...args: unknown[]) => listPlaces(...args),
     getCityHealth: (...args: unknown[]) => getCityHealth(...args),
     listCities: (...args: unknown[]) => listCities(...args),
+    getExchangeRate: (...args: unknown[]) => getExchangeRate(...args),
     confirmPlace: vi.fn(),
   },
 }));
@@ -82,6 +84,34 @@ describe("DiscoverScreen", () => {
     // undefined-locale version rendered differently on Ubuntu CI than on a
     // local Windows run of the exact same code and same test).
     await waitFor(() => expect(screen.getByText("$30")).toBeInTheDocument());
+  });
+
+  it("shows a converted estimate alongside the native price when a home currency and a real rate are set", async () => {
+    listPlaces.mockResolvedValue([{ ...PLACE, priceAmount: 30 }]);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+    getExchangeRate.mockResolvedValue({ from: "USD", to: "CAD", rate: 1.35 });
+
+    renderWithClient(
+      <DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} homeCurrency="CAD" />
+    );
+
+    await waitFor(() => expect(screen.getByText("$30")).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText(/≈ CA\$41/)).toBeInTheDocument());
+  });
+
+  it("shows no converted estimate when no real rate is available for the pair", async () => {
+    listPlaces.mockResolvedValue([{ ...PLACE, priceAmount: 30 }]);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+    getExchangeRate.mockResolvedValue({ from: "USD", to: "XYZ", rate: null });
+
+    renderWithClient(
+      <DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} homeCurrency="XYZ" />
+    );
+
+    await waitFor(() => expect(screen.getByText("$30")).toBeInTheDocument());
+    expect(screen.queryByText(/≈/)).not.toBeInTheDocument();
   });
 
   it("shows no price at all when priceAmount hasn't been verified", async () => {

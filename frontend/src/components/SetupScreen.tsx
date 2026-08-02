@@ -105,7 +105,18 @@ const COUNTRY_NAMES: Record<string, string> = {
   KZ: "Kazakhstan",
   RO: "Romania",
   RS: "Serbia",
+  BE: "Belgium",
+  MO: "Macau",
 };
+
+// A practical set of major world currencies for "what do you spend in
+// day-to-day" -- not an exhaustive ISO 4217 list, and deliberately not tied
+// to the destination-city currency list (a traveler's home currency has
+// nothing to do with which cities this app covers).
+const HOME_CURRENCIES = [
+  "USD", "CAD", "EUR", "GBP", "AUD", "NZD", "JPY", "CNY", "INR", "MXN",
+  "BRL", "CHF", "SEK", "NOK", "DKK", "SGD", "HKD", "KRW", "ZAR", "AED",
+];
 
 function groupByCountry(cities: CitySummary[]): [string, CitySummary[]][] {
   const groups = new Map<string, CitySummary[]>();
@@ -122,6 +133,7 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
   const [city, setCity] = useState("");
   const [startDate, setStartDate] = useState("2026-10-09");
   const [endDate, setEndDate] = useState("2026-10-11");
+  const [homeCurrency, setHomeCurrency] = useState("USD");
   const createTrip = useCreateTrip();
   const cityGroups = useMemo(() => groupByCountry(cities ?? []), [cities]);
 
@@ -135,7 +147,10 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
 
   function handleSubmit() {
     const destination = cities?.find((c) => c.slug === city)?.name ?? city;
-    createTrip.mutate({ city, destination, startDate, endDate, interests }, { onSuccess: onCreated });
+    createTrip.mutate(
+      { city, destination, startDate, endDate, interests, homeCurrency },
+      { onSuccess: onCreated }
+    );
   }
 
   return (
@@ -152,6 +167,7 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
         <select
           value={city}
           onChange={(e) => setCity(e.target.value)}
+          aria-label="Destination"
           className="mb-2 w-full border border-line bg-paper-raised px-3 py-2.5 text-sm"
         >
           {cityGroups.map(([country, group]) => (
@@ -183,6 +199,24 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
             className="flex-1 border border-line bg-paper-raised px-3 py-2.5 font-mono text-[13px]"
           />
         </div>
+      </div>
+
+      <div>
+        <label className="mb-2 block font-mono text-[11px] uppercase tracking-wide text-ink-faint">
+          Your currency <span className="normal-case text-ink-faint">— prices show a converted estimate too</span>
+        </label>
+        <select
+          value={homeCurrency}
+          onChange={(e) => setHomeCurrency(e.target.value)}
+          aria-label="Your currency"
+          className="w-full border border-line bg-paper-raised px-3 py-2.5 text-sm"
+        >
+          {HOME_CURRENCIES.map((c) => (
+            <option key={c} value={c}>
+              {c}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div>

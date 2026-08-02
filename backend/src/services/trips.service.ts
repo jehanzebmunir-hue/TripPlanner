@@ -11,6 +11,7 @@ interface CreateTripInput {
   endDate?: string;
   interests?: string[];
   userId?: string;
+  homeCurrency?: string;
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -30,6 +31,7 @@ export async function createTrip(input: CreateTripInput) {
       endDate: input.endDate ? new Date(input.endDate) : undefined,
       interests: JSON.stringify(input.interests ?? []),
       userId: input.userId,
+      homeCurrency: input.homeCurrency || null,
     },
   });
 }

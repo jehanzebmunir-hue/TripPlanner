@@ -1,5 +1,13 @@
 import { categoryLabel } from "../categories";
-import { useAddItem, useCities, useCityHealth, useConfirmPlace, usePlaces, useRemoveItem } from "../hooks";
+import {
+  useAddItem,
+  useCities,
+  useCityHealth,
+  useConfirmPlace,
+  useExchangeRate,
+  usePlaces,
+  useRemoveItem,
+} from "../hooks";
 import { PlaceCard } from "./PlaceCard";
 
 interface Props {
@@ -7,9 +15,10 @@ interface Props {
   interests: string[];
   tripId: string;
   addedIds: Set<string>;
+  homeCurrency?: string | null;
 }
 
-export function DiscoverScreen({ city, interests, tripId, addedIds }: Props) {
+export function DiscoverScreen({ city, interests, tripId, addedIds, homeCurrency }: Props) {
   const { data: places, isLoading } = usePlaces(city);
   const { data: health } = useCityHealth(city);
   const { data: cities } = useCities();
@@ -17,6 +26,10 @@ export function DiscoverScreen({ city, interests, tripId, addedIds }: Props) {
   const removeItem = useRemoveItem(tripId);
   const confirm = useConfirmPlace(city);
   const currency = cities?.find((c) => c.slug === city)?.currency ?? "USD";
+  // One shared rate for every card in this list, not one fetch per place --
+  // the backend already caches a real rate at most once per pair per UTC
+  // day, so there's nothing to gain from asking more than once here either.
+  const { data: exchangeRate } = useExchangeRate(currency, homeCurrency ?? undefined);
 
   if (isLoading) return <p className="text-sm text-ink-soft">Loading…</p>;
 
@@ -48,6 +61,8 @@ export function DiscoverScreen({ city, interests, tripId, addedIds }: Props) {
           added={addedIds.has(p.id)}
           categoryLabel={categoryLabel(p.category)}
           currency={currency}
+          homeCurrency={homeCurrency ?? undefined}
+          exchangeRate={exchangeRate?.rate}
           onToggleAdd={() => (addedIds.has(p.id) ? removeItem.mutate(p.id) : addItem.mutate(p.id))}
           onConfirm={(vote) => confirm.mutate({ id: p.id, vote })}
         />

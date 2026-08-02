@@ -119,7 +119,13 @@ export default function App() {
           <SetupScreen interests={interests} onInterestsChange={setInterests} onCreated={handleCreated} />
         )}
         {tab === "discover" && tripId && trip && (
-          <DiscoverScreen city={trip.city} interests={interests} tripId={tripId} addedIds={addedIds} />
+          <DiscoverScreen
+            city={trip.city}
+            interests={interests}
+            tripId={tripId}
+            addedIds={addedIds}
+            homeCurrency={trip.homeCurrency}
+          />
         )}
         {tab === "itinerary" && tripId && trip && <ItineraryScreen tripId={tripId} city={trip.city} />}
         {tab === "checklist" && tripId && trip && <ChecklistScreen tripId={tripId} city={trip.city} />}

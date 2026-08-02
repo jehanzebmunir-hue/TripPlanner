@@ -30,7 +30,7 @@ describe("SetupScreen", () => {
     renderWithClient(<SetupScreen interests={[]} onInterestsChange={vi.fn()} onCreated={vi.fn()} />);
 
     await waitFor(() => {
-      expect(screen.getByRole("combobox")).toHaveValue("nyc");
+      expect(screen.getByRole("combobox", { name: "Destination" })).toHaveValue("nyc");
     });
   });
 
@@ -43,8 +43,8 @@ describe("SetupScreen", () => {
 
     renderWithClient(<SetupScreen interests={["food-dining"]} onInterestsChange={vi.fn()} onCreated={onCreated} />);
 
-    await waitFor(() => expect(screen.getByRole("combobox")).toHaveValue("nyc"));
-    await user.selectOptions(screen.getByRole("combobox"), "paris");
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Destination" })).toHaveValue("nyc"));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Destination" }), "paris");
     await user.click(screen.getByRole("button", { name: /see what's on/i }));
 
     await waitFor(() => {
@@ -54,6 +54,26 @@ describe("SetupScreen", () => {
       expect.objectContaining({ city: "paris", destination: "Paris, France", interests: ["food-dining"] })
     );
     await waitFor(() => expect(onCreated).toHaveBeenCalled());
+  });
+
+  it("defaults home currency to USD and submits whichever currency is selected", async () => {
+    listCities.mockResolvedValue(CITIES);
+    listVibes.mockResolvedValue([]);
+    createTrip.mockResolvedValue({ id: "trip1", city: "nyc", destination: "New York, NY", items: [] });
+    const user = userEvent.setup();
+
+    renderWithClient(<SetupScreen interests={[]} onInterestsChange={vi.fn()} onCreated={vi.fn()} />);
+
+    await waitFor(() => expect(screen.getByRole("combobox", { name: "Your currency" })).toHaveValue("USD"));
+    await user.selectOptions(screen.getByRole("combobox", { name: "Your currency" }), "CAD");
+    await user.click(screen.getByRole("button", { name: /see everything/i }));
+
+    await waitFor(() => expect(createTrip).toHaveBeenCalled());
+    // The last call, not calls[0] -- createTrip's mock.calls accumulates
+    // across tests in this file (nothing resets it between them), so an
+    // earlier test's call is still index 0 by the time this one runs.
+    const lastCall = createTrip.mock.calls[createTrip.mock.calls.length - 1];
+    expect(lastCall[0]).toEqual(expect.objectContaining({ homeCurrency: "CAD" }));
   });
 
   it("disables submission until a destination is available", async () => {

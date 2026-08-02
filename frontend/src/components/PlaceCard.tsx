@@ -11,6 +11,12 @@ interface Props {
   added: boolean;
   categoryLabel: string;
   currency: string;
+  homeCurrency?: string;
+  // undefined = not fetched/no home currency set (show nothing extra); null
+  // = fetched but no real rate available for this pair (also show nothing
+  // extra, never a guessed conversion) -- same "no citation, no claim"
+  // discipline as priceAmount itself.
+  exchangeRate?: number | null;
   onToggleAdd: () => void;
   onConfirm: (vote: "valid" | "invalid") => void;
 }
@@ -30,9 +36,25 @@ function formatPrice(amount: number | null | undefined, currency: string): strin
   return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
 }
 
-export function PlaceCard({ place, added, categoryLabel, currency, onToggleAdd, onConfirm }: Props) {
+export function PlaceCard({
+  place,
+  added,
+  categoryLabel,
+  currency,
+  homeCurrency,
+  exchangeRate,
+  onToggleAdd,
+  onConfirm,
+}: Props) {
   const badgeLabel = place.band === "stale" ? `Stale · ${place.daysSince}d ago` : `Verified ${place.daysSince}d ago`;
   const price = formatPrice(place.priceAmount, currency);
+  // Only a real, positive priceAmount converts -- "Free" and unverified
+  // prices have nothing to convert, and a 0 or negative rate would only
+  // ever come from a broken provider response, never a real one.
+  const converted =
+    place.priceAmount && place.priceAmount > 0 && homeCurrency && exchangeRate
+      ? formatPrice(place.priceAmount * exchangeRate, homeCurrency)
+      : null;
 
   return (
     <div className="flex flex-col gap-2 border border-line bg-paper-raised p-4 shadow-sm">
@@ -51,6 +73,7 @@ export function PlaceCard({ place, added, categoryLabel, currency, onToggleAdd, 
         <span className="text-xs text-ink-faint">
           {categoryLabel}
           {price && <span className="ml-2 font-mono text-[11px] text-ink-soft">{price}</span>}
+          {converted && <span className="ml-1 font-mono text-[11px] text-ink-faint">(≈ {converted})</span>}
         </span>
 
         {place.band === "stale" ? (
