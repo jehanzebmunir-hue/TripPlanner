@@ -48,6 +48,14 @@ export const en = {
     submitAll: "See everything →",
     submitFiltered: "See what's on →",
   },
+  editTrip: {
+    opener: "Edit trip dates & currency",
+    heading: "Edit trip",
+    legStartDate: "{{destination}} start date",
+    legEndDate: "{{destination}} end date",
+    saving: "Saving…",
+    save: "Save changes",
+  },
   findDestination: {
     opener: "Not sure yet? Find a destination →",
     heading: "Find a destination",

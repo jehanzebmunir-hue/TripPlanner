@@ -4,6 +4,7 @@ import { setEditToken } from "./api";
 import { AccountPanel } from "./components/AccountPanel";
 import { ChecklistScreen } from "./components/ChecklistScreen";
 import { DiscoverScreen } from "./components/DiscoverScreen";
+import { EditTripPanel } from "./components/EditTripPanel";
 import { ItineraryScreen } from "./components/ItineraryScreen";
 import { SetupScreen } from "./components/SetupScreen";
 import { useCities, useTrip } from "./hooks";
@@ -167,6 +168,11 @@ export default function App() {
       >
         {tab === "setup" && (
           <SetupScreen interests={interests} onInterestsChange={setInterests} onCreated={handleCreated} />
+        )}
+        {tab !== "setup" && trip && (
+          <div className="mb-4">
+            <EditTripPanel trip={trip} />
+          </div>
         )}
         {tab === "discover" && tripId && trip && (
           <DiscoverScreen

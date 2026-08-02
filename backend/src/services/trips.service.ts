@@ -186,6 +186,82 @@ export async function moveTripItem(tripId: string, placeId: string, dayIndex: nu
   return item;
 }
 
+interface UpdateLegInput {
+  id: string;
+  startDate?: string | null;
+  endDate?: string | null;
+}
+
+interface UpdateTripInput {
+  startDate?: string | null;
+  endDate?: string | null;
+  homeCurrency?: string | null;
+  legs?: UpdateLegInput[];
+}
+
+// Deliberately narrow: dates and home currency only, on the trip and on
+// existing legs. Reassigning a primary city or a leg's city is explicitly
+// out of scope here -- every already-added TripItem is tied to a specific
+// city, and changing the city out from under them is a real data-integrity
+// question (do the items move with it? get orphaned? silently vanish?)
+// that a same-city date fix doesn't need to answer. Adding/removing legs
+// stays a creation-time-only operation for the same reason.
+export async function updateTrip(tripId: string, input: UpdateTripInput, requester: Requester = {}) {
+  const trip = await prisma.trip.findUniqueOrThrow({ where: { id: tripId }, include: { legs: true, items: true } });
+  assertCanEdit(trip, requester);
+
+  const parseDate = (v: string | null | undefined) => (v ? new Date(v) : null);
+
+  if (input.startDate !== undefined || input.endDate !== undefined) {
+    const newStart = input.startDate !== undefined ? parseDate(input.startDate) : trip.startDate;
+    const newEnd = input.endDate !== undefined ? parseDate(input.endDate) : trip.endDate;
+    const totalDays = tripLengthDays(newStart, newEnd);
+    const outOfRange = trip.items.filter((i) => i.legId === null && i.dayIndex > totalDays).length;
+    if (outOfRange > 0) {
+      throw new BadRequestError(
+        `${outOfRange} item(s) would fall outside the new date range — move or remove them first`
+      );
+    }
+  }
+
+  const legUpdates = input.legs ?? [];
+  for (const legUpdate of legUpdates) {
+    const leg = trip.legs.find((l) => l.id === legUpdate.id);
+    if (!leg) throw new BadRequestError(`Unknown leg: ${legUpdate.id}`);
+    const newStart = legUpdate.startDate !== undefined ? parseDate(legUpdate.startDate) : leg.startDate;
+    const newEnd = legUpdate.endDate !== undefined ? parseDate(legUpdate.endDate) : leg.endDate;
+    const totalDays = tripLengthDays(newStart, newEnd);
+    const outOfRange = trip.items.filter((i) => i.legId === leg.id && i.dayIndex > totalDays).length;
+    if (outOfRange > 0) {
+      throw new BadRequestError(
+        `${outOfRange} item(s) in ${leg.destination} would fall outside the new date range — move or remove them first`
+      );
+    }
+  }
+
+  await prisma.trip.update({
+    where: { id: tripId },
+    data: {
+      startDate: input.startDate !== undefined ? parseDate(input.startDate) : undefined,
+      endDate: input.endDate !== undefined ? parseDate(input.endDate) : undefined,
+      homeCurrency: input.homeCurrency !== undefined ? input.homeCurrency || null : undefined,
+    },
+  });
+
+  for (const legUpdate of legUpdates) {
+    await prisma.tripLeg.update({
+      where: { id: legUpdate.id },
+      data: {
+        startDate: legUpdate.startDate !== undefined ? parseDate(legUpdate.startDate) : undefined,
+        endDate: legUpdate.endDate !== undefined ? parseDate(legUpdate.endDate) : undefined,
+      },
+    });
+  }
+
+  await touchTrip(tripId);
+  return getTrip(tripId);
+}
+
 export async function deleteTrip(tripId: string, requester: Requester = {}) {
   const trip = await prisma.trip.findUniqueOrThrow({ where: { id: tripId } });
   assertCanEdit(trip, requester);

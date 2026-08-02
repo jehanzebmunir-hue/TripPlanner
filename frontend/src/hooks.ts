@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { api } from "./api";
+import { api, UpdateTripInput } from "./api";
 import { pickStarterPlaces, starterTargetCount } from "./autoFill";
 import { daysBetween } from "./dateUtils";
 import { BudgetTier, Trip } from "./types";
@@ -82,6 +82,14 @@ function useInvalidateTrip(tripId?: string) {
     qc.invalidateQueries({ queryKey: ["itinerary", tripId] });
     qc.invalidateQueries({ queryKey: ["checklist", tripId] });
   };
+}
+
+export function useUpdateTrip(tripId?: string) {
+  const invalidate = useInvalidateTrip(tripId);
+  return useMutation({
+    mutationFn: (input: UpdateTripInput) => api.updateTrip(tripId!, input),
+    onSuccess: invalidate,
+  });
 }
 
 export function useAddItem(tripId?: string) {

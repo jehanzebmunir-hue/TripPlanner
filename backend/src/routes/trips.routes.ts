@@ -11,6 +11,7 @@ import {
   getUserTrips,
   moveTripItem,
   removeTripItem,
+  updateTrip,
 } from "../services/trips.service";
 
 const router = Router();
@@ -36,6 +37,16 @@ router.post("/", optionalAuth, async (req: AuthedRequest, res, next) => {
 router.get("/:id", async (req, res, next) => {
   try {
     res.json(await getTrip(req.params.id));
+  } catch (err) {
+    next(err);
+  }
+});
+
+router.patch("/:id", optionalAuth, attachEditToken, async (req: AuthedRequest, res, next) => {
+  try {
+    res.json(
+      await updateTrip(req.params.id, req.body, { userId: req.userId, editToken: req.editToken })
+    );
   } catch (err) {
     next(err);
   }

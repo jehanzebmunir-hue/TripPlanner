@@ -10,6 +10,7 @@ const tripItemDelete = vi.fn();
 const tripItemUpdate = vi.fn();
 const tripItemCount = vi.fn();
 const tripItemFindUniqueOrThrow = vi.fn();
+const tripLegUpdate = vi.fn();
 const placeFindUniqueOrThrow = vi.fn();
 const checklistCheckDeleteMany = vi.fn();
 
@@ -28,6 +29,7 @@ vi.mock("../lib/prisma", () => ({
       count: (...a: unknown[]) => tripItemCount(...a),
       findUniqueOrThrow: (...a: unknown[]) => tripItemFindUniqueOrThrow(...a),
     },
+    tripLeg: { update: (...a: unknown[]) => tripLegUpdate(...a) },
     place: { findUniqueOrThrow: (...a: unknown[]) => placeFindUniqueOrThrow(...a) },
     checklistCheck: { deleteMany: (...a: unknown[]) => checklistCheckDeleteMany(...a) },
   },
@@ -41,6 +43,8 @@ function anonymousTrip(overrides: Record<string, unknown> = {}) {
     startDate: null,
     endDate: null,
     legs: [],
+    items: [],
+    interests: "[]",
     ...overrides,
   };
 }
@@ -218,6 +222,103 @@ describe("moveTripItem: leg-relative dayIndex, not the global one the itinerary 
     await expect(moveTripItem("t1", "p1", 5, { editToken: "real-edit-token" })).rejects.toMatchObject({
       status: 400,
     });
+  });
+});
+
+describe("updateTrip", () => {
+  beforeEach(() => {
+    tripFindUniqueOrThrow.mockReset();
+    tripUpdate.mockReset().mockResolvedValue(undefined);
+    tripLegUpdate.mockReset().mockResolvedValue(undefined);
+  });
+
+  it("rejects without the real edit token, same as every other mutation", async () => {
+    tripFindUniqueOrThrow.mockResolvedValue(anonymousTrip());
+    const { updateTrip } = await import("./trips.service");
+
+    await expect(updateTrip("t1", { homeCurrency: "CAD" }, {})).rejects.toMatchObject({ status: 403 });
+    expect(tripUpdate).not.toHaveBeenCalled();
+  });
+
+  it("updates dates and home currency with the real edit token", async () => {
+    tripFindUniqueOrThrow.mockResolvedValue(anonymousTrip());
+    const { updateTrip } = await import("./trips.service");
+
+    await updateTrip(
+      "t1",
+      { startDate: "2026-11-01", endDate: "2026-11-05", homeCurrency: "CAD" },
+      { editToken: "real-edit-token" }
+    );
+
+    expect(tripUpdate).toHaveBeenCalledWith({
+      where: { id: "t1" },
+      data: { startDate: new Date("2026-11-01"), endDate: new Date("2026-11-05"), homeCurrency: "CAD" },
+    });
+  });
+
+  it("rejects shrinking the date range when an existing item would fall outside it, rather than silently corrupting its day", async () => {
+    tripFindUniqueOrThrow.mockResolvedValue(
+      anonymousTrip({
+        startDate: new Date("2026-10-09"),
+        endDate: new Date("2026-10-15"), // 7 days
+        items: [{ legId: null, dayIndex: 6 }], // day 6 -- fine today, not after shrinking
+      })
+    );
+    const { updateTrip } = await import("./trips.service");
+
+    await expect(
+      updateTrip("t1", { endDate: "2026-10-11" }, { editToken: "real-edit-token" }) // shrinks to 3 days
+    ).rejects.toMatchObject({ status: 400 });
+    expect(tripUpdate).not.toHaveBeenCalled();
+  });
+
+  it("updates an existing leg's dates by id", async () => {
+    tripFindUniqueOrThrow.mockResolvedValue(
+      anonymousTrip({
+        legs: [{ id: "leg-rome", startDate: new Date("2026-10-20"), endDate: new Date("2026-10-21") }],
+      })
+    );
+    const { updateTrip } = await import("./trips.service");
+
+    await updateTrip(
+      "t1",
+      { legs: [{ id: "leg-rome", startDate: "2026-10-22", endDate: "2026-10-23" }] },
+      { editToken: "real-edit-token" }
+    );
+
+    expect(tripLegUpdate).toHaveBeenCalledWith({
+      where: { id: "leg-rome" },
+      data: { startDate: new Date("2026-10-22"), endDate: new Date("2026-10-23") },
+    });
+  });
+
+  it("rejects an unknown leg id rather than silently ignoring it", async () => {
+    tripFindUniqueOrThrow.mockResolvedValue(anonymousTrip({ legs: [] }));
+    const { updateTrip } = await import("./trips.service");
+
+    await expect(
+      updateTrip("t1", { legs: [{ id: "not-a-real-leg", startDate: "2026-10-22" }] }, { editToken: "real-edit-token" })
+    ).rejects.toMatchObject({ status: 400 });
+    expect(tripLegUpdate).not.toHaveBeenCalled();
+  });
+
+  it("rejects shrinking a leg's date range when one of its own items would fall outside it", async () => {
+    tripFindUniqueOrThrow.mockResolvedValue(
+      anonymousTrip({
+        legs: [{ id: "leg-rome", startDate: new Date("2026-10-20"), endDate: new Date("2026-10-25") }], // 6 days
+        items: [{ legId: "leg-rome", dayIndex: 5 }],
+      })
+    );
+    const { updateTrip } = await import("./trips.service");
+
+    await expect(
+      updateTrip(
+        "t1",
+        { legs: [{ id: "leg-rome", endDate: "2026-10-22" }] }, // shrinks to 3 days
+        { editToken: "real-edit-token" }
+      )
+    ).rejects.toMatchObject({ status: 400 });
+    expect(tripLegUpdate).not.toHaveBeenCalled();
   });
 });
 

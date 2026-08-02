@@ -84,6 +84,19 @@ export interface ExchangeRateResponse {
   rate: number | null;
 }
 
+export interface UpdateLegInput {
+  id: string;
+  startDate?: string | null;
+  endDate?: string | null;
+}
+
+export interface UpdateTripInput {
+  startDate?: string | null;
+  endDate?: string | null;
+  homeCurrency?: string | null;
+  legs?: UpdateLegInput[];
+}
+
 export const api = {
   register: (email: string, password: string) =>
     request<AuthResponse>(`/auth/register`, { method: "POST", body: JSON.stringify({ email, password }) }),
@@ -120,6 +133,8 @@ export const api = {
   createTrip: (input: CreateTripInput) =>
     request<CreatedTrip>(`/trips`, { method: "POST", body: JSON.stringify(input) }),
   getTrip: (id: string) => request<Trip>(`/trips/${id}`),
+  updateTrip: (id: string, input: UpdateTripInput) =>
+    request<Trip>(`/trips/${id}`, { method: "PATCH", body: JSON.stringify(input) }),
   addItem: (tripId: string, placeId: string) =>
     request(`/trips/${tripId}/items`, { method: "POST", body: JSON.stringify({ placeId }) }),
   removeItem: (tripId: string, placeId: string) =>

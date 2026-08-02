@@ -50,6 +50,14 @@ export const es: TranslationResource = {
     submitAll: "Ver todo →",
     submitFiltered: "Ver lo disponible →",
   },
+  editTrip: {
+    opener: "Editar fechas y moneda del viaje",
+    heading: "Editar viaje",
+    legStartDate: "Fecha de inicio de {{destination}}",
+    legEndDate: "Fecha de fin de {{destination}}",
+    saving: "Guardando…",
+    save: "Guardar cambios",
+  },
   findDestination: {
     opener: "¿Aún no lo sabes? Encuentra un destino →",
     heading: "Encuentra un destino",

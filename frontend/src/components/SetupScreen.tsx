@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { CATEGORIES } from "../categories";
 import { useCities, useCreateTrip } from "../hooks";
 import { CitySummary, CreatedTrip } from "../types";
+import { HOME_CURRENCIES } from "../homeCurrencies";
 import { CitySearchPanel } from "./CitySearchPanel";
 import { FindDestinationPanel } from "./FindDestinationPanel";
 
@@ -11,15 +12,6 @@ interface Props {
   onInterestsChange: (interests: string[]) => void;
   onCreated: (trip: CreatedTrip) => void;
 }
-
-// A practical set of major world currencies for "what do you spend in
-// day-to-day" -- not an exhaustive ISO 4217 list, and deliberately not tied
-// to the destination-city currency list (a traveler's home currency has
-// nothing to do with which cities this app covers).
-const HOME_CURRENCIES = [
-  "USD", "CAD", "EUR", "GBP", "AUD", "NZD", "JPY", "CNY", "INR", "MXN",
-  "BRL", "CHF", "SEK", "NOK", "DKK", "SGD", "HKD", "KRW", "ZAR", "AED",
-];
 
 function groupByCountry(cities: CitySummary[]): [string, CitySummary[]][] {
   const groups = new Map<string, CitySummary[]>();
