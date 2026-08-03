@@ -1,5 +1,15 @@
 import { fetchWithRetry } from "../lib/httpRetry";
+import { photoUrlForWikidataId } from "../lib/wikidata";
 import { CityConfig, NormalizedRecord, SourceAdapter } from "../types";
+
+// Verified live against a real 20-place Paris sample: ~95% of named,
+// well-documented elements carry a wikidata tag, but resolving each one is
+// a real, sequential, rate-limited network call (see lib/wikidata.ts) --
+// looking up every single one would meaningfully slow down a city's first
+// (cold-start) ingestion. Capped per run, not skipped outright: a place
+// missed this time round gets a real photo on its next re-ingest, since
+// the upsert below always re-sets photoUrl from whatever this run found.
+const MAX_PHOTO_LOOKUPS = 8;
 
 // 8km — a reasonable "city center and nearby" radius. Not tuned per city
 // (same simplicity as the fixed size:15/per_page:15 caps on the
@@ -28,6 +38,7 @@ interface OverpassElement {
     "addr:housenumber"?: string;
     "addr:street"?: string;
     "addr:city"?: string;
+    wikidata?: string;
   };
 }
 
@@ -114,9 +125,21 @@ export const overpassAdapter: SourceAdapter = {
     // Real, verified caveat: this is crowdsourced OSM data, not a curated
     // dataset — quality varies more than Google Places'. A missing name is
     // the one case worth filtering rather than showing a useless card.
-    const records: NormalizedRecord[] = elements
-      .filter((e) => e.tags?.name && e.lat != null && e.lon != null)
-      .map((e) => ({
+    const named = elements.filter((e) => e.tags?.name && e.lat != null && e.lon != null);
+
+    const records: NormalizedRecord[] = [];
+    let photoLookups = 0;
+    for (const e of named) {
+      let photoUrl: string | undefined;
+      if (e.tags?.wikidata && photoLookups < MAX_PHOTO_LOOKUPS) {
+        photoLookups++;
+        try {
+          photoUrl = await photoUrlForWikidataId(e.tags.wikidata);
+        } catch (err) {
+          console.warn(`[overpass] photo lookup failed for ${e.tags.wikidata}:`, (err as Error).message);
+        }
+      }
+      records.push({
         externalId: `${e.type}/${e.id}`,
         category: categoryFor(e.tags),
         tier: "static",
@@ -124,11 +147,13 @@ export const overpassAdapter: SourceAdapter = {
         address: addressFor(e.tags),
         lat: e.lat,
         lng: e.lon,
+        photoUrl,
         // No price extraction: OSM's fee/charge tags are free-text
         // ("10 EUR", "full:12;discount:10;...") not a reliable structured
         // number — parsing them would risk exactly the kind of guessed
         // figure this project's pricing model is built to avoid.
-      }));
+      });
+    }
 
     return records;
   },

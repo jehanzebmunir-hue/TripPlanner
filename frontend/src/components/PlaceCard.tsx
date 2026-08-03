@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Place } from "../types";
 
@@ -48,6 +49,11 @@ export function PlaceCard({
   onConfirm,
 }: Props) {
   const { t } = useTranslation();
+  // A real photo can still 404 (a Commons file renamed/deleted since this
+  // was ingested) -- hiding it on error is more honest than a visibly
+  // broken image icon, and costs nothing since the card works fine
+  // without a photo already (most places never had one to begin with).
+  const [photoFailed, setPhotoFailed] = useState(false);
   const badgeLabel =
     place.band === "stale"
       ? t("placeCard.stale", { days: place.daysSince })
@@ -64,6 +70,15 @@ export function PlaceCard({
 
   return (
     <div className="flex flex-col gap-2 border border-line bg-paper-raised p-4 shadow-sm">
+      {place.photoUrl && !photoFailed && (
+        <img
+          src={place.photoUrl}
+          alt=""
+          loading="lazy"
+          onError={() => setPhotoFailed(true)}
+          className="-mx-4 -mt-4 mb-1 h-36 w-[calc(100%+2rem)] object-cover"
+        />
+      )}
       <div className="flex items-start justify-between gap-2.5">
         <h3 className="text-[15px] font-bold">{place.name}</h3>
         <span

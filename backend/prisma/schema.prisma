@@ -33,6 +33,11 @@ model Place {
   // (config/localization.ts's getCurrency()), and duplicating it per-place
   // would just create a second place for the data to disagree with itself.
   priceAmount    Float?
+  // A real photo URL resolved from the place's own linked Wikidata entry
+  // (see lib/wikidata.ts) -- null means no such link exists, or it has no
+  // real photo attached, which is most places. Never a stock photo or a
+  // guessed image.
+  photoUrl       String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 

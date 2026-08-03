@@ -3,6 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const fetchWithRetry = vi.fn();
 vi.mock("../lib/httpRetry", () => ({ fetchWithRetry: (...a: unknown[]) => fetchWithRetry(...a) }));
 
+const photoUrlForWikidataId = vi.fn();
+vi.mock("../lib/wikidata", () => ({ photoUrlForWikidataId: (...a: unknown[]) => photoUrlForWikidataId(...a) }));
+
 const CITY = { slug: "paris", name: "Paris, France", country: "FR", lat: 48.8589, lng: 2.32 };
 
 function response(elements: unknown[]) {
@@ -12,6 +15,7 @@ function response(elements: unknown[]) {
 describe("overpassAdapter", () => {
   beforeEach(() => {
     fetchWithRetry.mockReset();
+    photoUrlForWikidataId.mockReset().mockResolvedValue(undefined);
   });
 
   it("skips a city with no coordinates rather than querying (around:8000,0,0)", async () => {
@@ -144,5 +148,58 @@ describe("overpassAdapter", () => {
     const records = await overpassAdapter.run(CITY);
 
     expect(records).toEqual([]);
+  });
+
+  it("resolves a real photo for an element with a wikidata tag", async () => {
+    fetchWithRetry.mockResolvedValue(
+      response([{ type: "node", id: 1, lat: 48.86, lon: 2.35, tags: { name: "Musée de l'Armée", tourism: "museum", wikidata: "Q1996069" } }])
+    );
+    photoUrlForWikidataId.mockResolvedValue("https://commons.wikimedia.org/wiki/Special:FilePath/example.jpg");
+    const { overpassAdapter } = await import("./overpass");
+
+    const records = await overpassAdapter.run(CITY);
+
+    expect(photoUrlForWikidataId).toHaveBeenCalledWith("Q1996069");
+    expect(records[0].photoUrl).toBe("https://commons.wikimedia.org/wiki/Special:FilePath/example.jpg");
+  });
+
+  it("leaves photoUrl undefined rather than guessing when there's no wikidata tag at all", async () => {
+    fetchWithRetry.mockResolvedValue(response([{ type: "node", id: 1, lat: 48.86, lon: 2.35, tags: { name: "No wikidata link" } }]));
+    const { overpassAdapter } = await import("./overpass");
+
+    const records = await overpassAdapter.run(CITY);
+
+    expect(photoUrlForWikidataId).not.toHaveBeenCalled();
+    expect(records[0].photoUrl).toBeUndefined();
+  });
+
+  it("leaves photoUrl undefined rather than failing the whole adapter when a photo lookup throws", async () => {
+    fetchWithRetry.mockResolvedValue(
+      response([{ type: "node", id: 1, lat: 48.86, lon: 2.35, tags: { name: "Broken link", wikidata: "Q1" } }])
+    );
+    photoUrlForWikidataId.mockRejectedValue(new Error("network error"));
+    const { overpassAdapter } = await import("./overpass");
+
+    const records = await overpassAdapter.run(CITY);
+
+    expect(records[0].name).toBe("Broken link");
+    expect(records[0].photoUrl).toBeUndefined();
+  });
+
+  it("caps photo lookups per run rather than looking up every single element", async () => {
+    const manyElements = Array.from({ length: 12 }, (_, i) => ({
+      type: "node",
+      id: i,
+      lat: 48.86,
+      lon: 2.35,
+      tags: { name: `Place ${i}`, wikidata: `Q${i}` },
+    }));
+    fetchWithRetry.mockResolvedValue(response(manyElements));
+    photoUrlForWikidataId.mockResolvedValue("https://commons.wikimedia.org/wiki/Special:FilePath/example.jpg");
+    const { overpassAdapter } = await import("./overpass");
+
+    await overpassAdapter.run(CITY);
+
+    expect(photoUrlForWikidataId.mock.calls.length).toBeLessThan(12);
   });
 });

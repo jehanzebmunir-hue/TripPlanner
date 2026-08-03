@@ -108,6 +108,7 @@ export async function ingestCity(
           bookingLabel: r.bookingLabel,
           bookingRef: r.bookingRef,
           priceAmount: r.priceAmount,
+          photoUrl: r.photoUrl,
           lastVerifiedAt,
         },
         update: {
@@ -122,6 +123,7 @@ export async function ingestCity(
           bookingLabel: r.bookingLabel,
           bookingRef: r.bookingRef,
           priceAmount: r.priceAmount,
+          photoUrl: r.photoUrl,
           lastVerifiedAt,
         },
       });

@@ -55,6 +55,11 @@ export interface NormalizedRecord {
   // >0 = a real, sourced number. Never a guessed figure — see seed.ts and
   // README for why.
   priceAmount?: number;
+  // A real photo URL resolved from the place's own linked Wikidata entry
+  // (see lib/wikidata.ts), never a stock photo or a guessed image.
+  // undefined when no wikidata link exists, or it has no real photo
+  // attached -- most places, honestly, not a placeholder.
+  photoUrl?: string;
 }
 
 export interface SourceAdapter {

@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithClient } from "../test/renderWithClient";
@@ -167,6 +167,44 @@ describe("DiscoverScreen", () => {
     expect(screen.queryByText("The Met")).not.toBeInTheDocument();
     expect(screen.getByText(/nothing matches your current filters/i)).toBeInTheDocument();
     expect(screen.queryByText(/run the ingest script/i)).not.toBeInTheDocument();
+  });
+
+  it("shows a real photo when the place has one", async () => {
+    listPlaces.mockResolvedValue([{ ...PLACE, photoUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/example.jpg" }]);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+
+    renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
+
+    await waitFor(() => expect(screen.getByText("The Met")).toBeInTheDocument());
+    const img = document.querySelector("img") as HTMLImageElement;
+    expect(img).toBeTruthy();
+    expect(img.src).toBe("https://commons.wikimedia.org/wiki/Special:FilePath/example.jpg");
+  });
+
+  it("shows no photo element at all when the place has none, not a placeholder", async () => {
+    listPlaces.mockResolvedValue([{ ...PLACE, photoUrl: null }]);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+
+    renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
+
+    await waitFor(() => expect(screen.getByText("The Met")).toBeInTheDocument());
+    expect(document.querySelector("img")).toBeNull();
+  });
+
+  it("hides a real photo that fails to load rather than showing a broken image", async () => {
+    listPlaces.mockResolvedValue([{ ...PLACE, photoUrl: "https://commons.wikimedia.org/wiki/Special:FilePath/gone.jpg" }]);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+
+    renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
+
+    await waitFor(() => expect(screen.getByText("The Met")).toBeInTheDocument());
+    const img = document.querySelector("img") as HTMLImageElement;
+    fireEvent.error(img);
+
+    await waitFor(() => expect(document.querySelector("img")).toBeNull());
   });
 
   it("shows no price at all when priceAmount hasn't been verified", async () => {

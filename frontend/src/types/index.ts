@@ -18,6 +18,11 @@ export interface Place {
   // null/undefined = price not verified; 0 = confirmed free; >0 = a real,
   // sourced number. Never a guessed figure.
   priceAmount?: number | null;
+  // A real photo resolved from the place's own linked Wikidata entry (see
+  // backend lib/wikidata.ts) -- absent for most places (not every OSM
+  // element links to a notable-enough Wikidata entity), never a stock
+  // photo or a guess.
+  photoUrl?: string | null;
   lastVerifiedAt: string;
   confidence: number;
   band: Band;
