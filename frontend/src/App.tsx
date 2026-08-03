@@ -74,6 +74,14 @@ export default function App() {
     trackEvent("tab_view", tab);
   }, [tab]);
 
+  // index.html's static <title>Trip Planner</title> is just a build-time
+  // fallback for crawlers/link previews that don't run JS -- once a real
+  // trip is loaded, the tab/share-preview title should say where it's for,
+  // not stay generic for the entire session.
+  useEffect(() => {
+    document.title = trip ? `${trip.destination} · Trip Planner` : "Trip Planner";
+  }, [trip]);
+
   function setTripId(id: string) {
     setTripIdState(id);
     localStorage.setItem("tripId", id);

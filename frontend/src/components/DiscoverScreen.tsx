@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { lazy, Suspense, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { trackEvent } from "../analytics";
 import { CATEGORIES } from "../categories";
@@ -13,9 +13,15 @@ import {
   useRemoveItem,
 } from "../hooks";
 import { Place, TripLeg } from "../types";
-import { MapView } from "./MapView";
 import { PlaceCard } from "./PlaceCard";
 import { PlaceCardSkeleton } from "./Skeleton";
+
+// Maps default to collapsed (see MapView's own history) -- most page loads
+// never render one at all, so Leaflet (and its real tile-load requests)
+// shouldn't be in the initial bundle just for a feature most visits never
+// open. Split into its own chunk, fetched only the first time "Show map" is
+// actually clicked.
+const MapView = lazy(() => import("./MapView").then((m) => ({ default: m.MapView })));
 
 // How long an "Undo" offer stays live after removing a place -- long enough
 // to catch a misclick, short enough not to leave a stale toast around.
@@ -236,7 +242,11 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
           >
             {showMap ? t("map.hide") : t("map.show")}
           </button>
-          {showMap && <MapView places={sorted} />}
+          {showMap && (
+            <Suspense fallback={null}>
+              <MapView places={sorted} />
+            </Suspense>
+          )}
         </div>
       )}
 

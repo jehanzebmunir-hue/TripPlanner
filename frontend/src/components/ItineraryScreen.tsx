@@ -1,13 +1,18 @@
 import { TFunction } from "i18next";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { trackEvent } from "../analytics";
 import { daysBetween } from "../dateUtils";
 import { useAutoFillItinerary, useCities, useItinerary, useMoveItem, useTrip } from "../hooks";
 import { buildIcs, downloadIcs } from "../ics";
 import { ItineraryDay, ItineraryStop } from "../types";
-import { MapView } from "./MapView";
 import { Skeleton } from "./Skeleton";
+
+// See DiscoverScreen for the same reasoning -- maps default to collapsed, so
+// Leaflet shouldn't be in the initial bundle for a feature most visits never
+// open. One shared lazy chunk regardless of how many days end up rendering
+// their own MapView instance.
+const MapView = lazy(() => import("./MapView").then((m) => ({ default: m.MapView })));
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
@@ -212,7 +217,9 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
 
             {showMaps && day.stops.length > 0 && (
               <div className="mb-3">
-                <MapView places={day.stops.map((s) => s.place)} />
+                <Suspense fallback={null}>
+                  <MapView places={day.stops.map((s) => s.place)} />
+                </Suspense>
               </div>
             )}
 

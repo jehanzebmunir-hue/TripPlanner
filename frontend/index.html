@@ -7,6 +7,19 @@
     <meta name="theme-color" content="#2b5266" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Trip Planner</title>
+    <!-- Static fallback for crawlers/link previews that don't execute JS; App.tsx
+         overwrites the title (and index.ts's setLanguage overwrites <html lang>)
+         once the app mounts and knows the real language/trip context. -->
+    <meta
+      name="description"
+      content="Plan a trip from real, sourced, dated places -- OpenStreetMap, Ticketmaster, SeatGeek, and city open-data feeds, never AI-guessed. Free, no account required."
+    />
+    <meta property="og:title" content="Trip Planner" />
+    <meta
+      property="og:description"
+      content="Plan a trip from real, sourced, dated places -- never AI-guessed. Free, no account required."
+    />
+    <meta property="og:type" content="website" />
   </head>
   <body>
     <div id="root"></div>

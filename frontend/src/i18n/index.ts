@@ -27,9 +27,16 @@ i18next.use(initReactI18next).init({
   interpolation: { escapeValue: false }, // React already escapes -- double-escaping would corrupt "&" etc. in real strings
 });
 
+// index.html hardcodes lang="en" as a static fallback for crawlers that
+// don't execute JS -- once the app actually knows the real active language,
+// the <html> tag should say so too (screen readers and browser translate
+// prompts both key off this), not stay stuck on the build-time default.
+if (typeof document !== "undefined") document.documentElement.lang = initialLanguage;
+
 export function setLanguage(lang: Language): void {
   localStorage.setItem(STORAGE_KEY, lang);
   i18next.changeLanguage(lang);
+  if (typeof document !== "undefined") document.documentElement.lang = lang;
 }
 
 export default i18next;
