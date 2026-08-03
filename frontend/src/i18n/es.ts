@@ -116,6 +116,8 @@ export const es: TranslationResource = {
     dayLabelWithDate: "Día {{day}} · {{date}}",
     transit: "{{minutes}} min · {{mode}}",
     book: "Reservar",
+    export: "Exportar calendario (.ics)",
+    exportNeedsDates: "Añade fechas reales a este viaje para exportar un archivo de calendario",
   },
   checklist: {
     subheading: "Elementos de reserva de tu itinerario, más un cronograma de preparación general.",

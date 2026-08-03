@@ -114,6 +114,8 @@ export const en = {
     dayLabelWithDate: "Day {{day}} · {{date}}",
     transit: "{{minutes}} min · {{mode}}",
     book: "Book",
+    export: "Export calendar (.ics)",
+    exportNeedsDates: "Add real dates to this trip to export a calendar file",
   },
   checklist: {
     subheading: "Booking items from your itinerary, plus a generic prep timeline.",

@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { daysBetween } from "../dateUtils";
 import { useAutoFillItinerary, useCities, useItinerary, useMoveItem, useTrip } from "../hooks";
+import { buildIcs, downloadIcs } from "../ics";
 import { ItineraryDay, ItineraryStop } from "../types";
 import { MapView } from "./MapView";
 import { Skeleton } from "./Skeleton";
@@ -41,6 +42,12 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
   const [draggedStop, setDraggedStop] = useState<ItineraryStop | null>(null);
   const [dragOverDayIndex, setDragOverDayIndex] = useState<number | null>(null);
   const [showMaps, setShowMaps] = useState(true);
+
+  function handleExport() {
+    if (!days) return;
+    const ics = buildIcs(trip?.destination ?? "Trip", days);
+    downloadIcs(`${(trip?.destination ?? "trip").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.ics`, ics);
+  }
 
   if (isLoading) {
     return (
@@ -138,13 +145,24 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
       <h2 className="sr-only">{t("app.tabs.itinerary")}</h2>
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-ink-soft">{t("itinerary.splitEvenly")}</p>
-        <button
-          type="button"
-          onClick={() => setShowMaps((v) => !v)}
-          className="shrink-0 font-mono text-[11px] uppercase tracking-wide text-ink-faint underline"
-        >
-          {showMaps ? t("map.hide") : t("map.show")}
-        </button>
+        <div className="flex shrink-0 gap-3">
+          <button
+            type="button"
+            onClick={() => setShowMaps((v) => !v)}
+            className="font-mono text-[11px] uppercase tracking-wide text-ink-faint underline"
+          >
+            {showMaps ? t("map.hide") : t("map.show")}
+          </button>
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={!days.some((d) => d.date)}
+            className="font-mono text-[11px] uppercase tracking-wide text-ink-faint underline disabled:opacity-40"
+            title={days.some((d) => d.date) ? undefined : t("itinerary.exportNeedsDates")}
+          >
+            {t("itinerary.export")}
+          </button>
+        </div>
       </div>
 
       {moveItem.isError && (

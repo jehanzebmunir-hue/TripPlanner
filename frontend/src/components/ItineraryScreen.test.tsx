@@ -22,6 +22,12 @@ vi.mock("../api", () => ({
   },
 }));
 
+const downloadIcs = vi.fn();
+vi.mock("../ics", async () => {
+  const actual = await vi.importActual<typeof import("../ics")>("../ics");
+  return { buildIcs: actual.buildIcs, downloadIcs: (...args: unknown[]) => downloadIcs(...args) };
+});
+
 const CITIES = [
   { slug: "tokyo", name: "Tokyo, Japan", country: "JP", currency: "JPY", timezone: "Asia/Tokyo" },
   { slug: "la", name: "Los Angeles, CA", country: "US", currency: "USD", timezone: "America/Los_Angeles" },
@@ -54,6 +60,7 @@ const PLACE = {
 describe("ItineraryScreen", () => {
   beforeEach(() => {
     moveItem.mockReset();
+    downloadIcs.mockReset();
   });
 
   it("shows an empty-state message when there are no days yet", async () => {
@@ -209,5 +216,42 @@ describe("ItineraryScreen", () => {
     fireEvent.drop(targetDayGroup);
 
     expect(moveItem).not.toHaveBeenCalled();
+  });
+
+  it("exports a real .ics file built from the actual itinerary when Export is clicked", async () => {
+    getItinerary.mockResolvedValue([
+      {
+        dayIndex: 1,
+        date: "2026-07-31T00:00:00.000Z",
+        stops: [{ place: PLACE, transitFromPrevious: null, legId: null, itemDayIndex: 1 }],
+      },
+    ]);
+    listCities.mockResolvedValue(CITIES);
+    getTrip.mockResolvedValue(TRIP);
+    const user = userEvent.setup();
+
+    renderWithClient(<ItineraryScreen tripId="trip1" />);
+    await waitFor(() => expect(screen.getByText("Senso-ji")).toBeInTheDocument());
+
+    const exportButton = screen.getByRole("button", { name: /export calendar/i });
+    expect(exportButton).not.toBeDisabled();
+    await user.click(exportButton);
+
+    expect(downloadIcs).toHaveBeenCalledTimes(1);
+    const [filename, content] = downloadIcs.mock.calls[0];
+    expect(filename).toBe("tokyo-japan.ics");
+    expect(content).toContain("SUMMARY:Senso-ji");
+    expect(content).toContain("DTSTART;VALUE=DATE:20260731");
+  });
+
+  it("disables Export when no day in the itinerary has a real date", async () => {
+    getItinerary.mockResolvedValue([{ dayIndex: 1, date: null, stops: [{ place: PLACE, transitFromPrevious: null, legId: null, itemDayIndex: 1 }] }]);
+    listCities.mockResolvedValue(CITIES);
+    getTrip.mockResolvedValue(TRIP);
+
+    renderWithClient(<ItineraryScreen tripId="trip1" />);
+    await waitFor(() => expect(screen.getByText("Senso-ji")).toBeInTheDocument());
+
+    expect(screen.getByRole("button", { name: /export calendar/i })).toBeDisabled();
   });
 });
