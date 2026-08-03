@@ -10,16 +10,22 @@ interface GPlace {
 }
 
 // This is the one metered/paid adapter in the app — worth a real spend
-// guard, not just a key gate. 166 = the real free-tier ceiling (Text Search
-// Pro SKU's 5,000 calls/month ÷ 30), not an arbitrary placeholder. Now
-// scoped to only priorityTier cities (see adapters/index.ts's
-// adaptersForCity — overpass covers baseline static-tier coverage for
-// every other city, for free), so real usage is ~44 cities/day at most —
-// comfortably inside this ceiling with room to grow the priority tier
-// itself before ever needing to raise it. Raise this only if you've
+// guard, not just a key gate. 161 = floor(5,000 / 31), the real free-tier
+// ceiling (Text Search Pro SKU's 5,000 calls/month) divided by the longest
+// possible month rather than 30 -- the previous value here (166 = 5,000/30)
+// could theoretically total 5,146 calls across a real 31-day month if the
+// cap were hit every single day, slightly over the free allowance. 161
+// guarantees that can never happen regardless of month length. Scoped to
+// only priorityTier cities (see adapters/index.ts's adaptersForCity —
+// overpass covers baseline static-tier coverage for every other city, for
+// free): the registry currently has 53 priority cities, and each can only
+// be re-fetched once per STRUCTURED_REFRESH_MS (24h default), so real
+// worst-case volume is ~53 calls/day -- this cap is a hard backstop far
+// above what the registry can actually generate today, not the thing
+// actually constraining spend in practice. Raise this only if you've
 // deliberately decided to start paying $32/1,000 calls past the free
 // allowance.
-const DEFAULT_MAX_CALLS_PER_DAY = 166;
+const DEFAULT_MAX_CALLS_PER_DAY = 161;
 
 export const googlePlacesAdapter: SourceAdapter = {
   name: "google-places",

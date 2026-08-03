@@ -30,11 +30,12 @@ export const DEFAULT_ADAPTERS = ["seed", "overpass", "ticketmaster", "seatgeek"]
 // google-places is deliberately *not* in DEFAULT_ADAPTERS. With overpass now
 // covering "every city gets some real static data" for free and unlimited,
 // google-places' real job is a quality upgrade where it matters most, not
-// baseline coverage — spreading its ~166-city free-tier budget across the
+// baseline coverage — spreading its ~161-call/day free-tier budget across the
 // whole registry would dilute it for no benefit once overpass already fills
-// the gap. Restricted to config/cities.ts's priorityTier set (~44 verified
+// the gap. Restricted to config/cities.ts's priorityTier set (53 verified
 // major cities), so the budget concentrates on the cities most likely to
-// actually be visited, instead of one thin layer over all 144.
+// actually be visited, instead of one thin layer over the full 159-city
+// registry.
 export function adaptersForCity(city: CityConfig): string[] {
   // A resolved (not curated) city has no seed data and no hand-verified
   // Ticketmaster/SeatGeek market string -- overpass is the only adapter
