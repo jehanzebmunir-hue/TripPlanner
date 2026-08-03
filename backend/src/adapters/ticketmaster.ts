@@ -35,7 +35,7 @@ export const ticketmasterAdapter: SourceAdapter = {
     const apiKey = process.env.TICKETMASTER_API_KEY;
     if (!apiKey) {
       console.warn("[ticketmaster] TICKETMASTER_API_KEY not set — skipping");
-      return [];
+      return null;
     }
 
     const params = new URLSearchParams({

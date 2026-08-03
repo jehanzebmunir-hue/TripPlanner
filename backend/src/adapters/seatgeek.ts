@@ -31,7 +31,7 @@ export const seatgeekAdapter: SourceAdapter = {
     const clientId = process.env.SEATGEEK_CLIENT_ID;
     if (!clientId) {
       console.warn("[seatgeek] SEATGEEK_CLIENT_ID not set — skipping");
-      return [];
+      return null;
     }
 
     const params = new URLSearchParams({

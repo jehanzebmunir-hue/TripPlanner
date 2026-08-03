@@ -21,13 +21,13 @@ describe("googlePlacesAdapter", () => {
     process.env.GOOGLE_PLACES_API_KEY = originalKey;
   });
 
-  it("never calls the API at all without a key, regardless of budget", async () => {
+  it("returns null (not attempted) without a key, regardless of budget", async () => {
     delete process.env.GOOGLE_PLACES_API_KEY;
     const { googlePlacesAdapter } = await import("./googlePlaces");
 
     const records = await googlePlacesAdapter.run(CITY);
 
-    expect(records).toEqual([]);
+    expect(records).toBeNull();
     expect(withinDailyBudget).not.toHaveBeenCalled();
     expect(fetchWithRetry).not.toHaveBeenCalled();
   });

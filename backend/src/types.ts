@@ -64,5 +64,10 @@ export interface NormalizedRecord {
 
 export interface SourceAdapter {
   name: string;
-  run(city: CityConfig): Promise<NormalizedRecord[]>;
+  // null means "intentionally not run" -- e.g. a key-gated adapter whose
+  // env var isn't set -- distinct from a real call that legitimately
+  // returned zero results ([]). ingestCity/ensureCityFresh use this to skip
+  // recording AdapterHealth entirely for a source that was never actually
+  // attempted, rather than logging a misleading "success" for it.
+  run(city: CityConfig): Promise<NormalizedRecord[] | null>;
 }

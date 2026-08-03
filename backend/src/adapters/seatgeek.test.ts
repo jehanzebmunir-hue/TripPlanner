@@ -27,7 +27,7 @@ describe("seatgeekAdapter", () => {
 
     const records = await seatgeekAdapter.run(CITY);
 
-    expect(records[0].priceAmount).toBe(62);
+    expect(records![0].priceAmount).toBe(62);
   });
 
   it("leaves priceAmount undefined rather than guessing when there are no priced listings", async () => {
@@ -36,16 +36,16 @@ describe("seatgeekAdapter", () => {
 
     const records = await seatgeekAdapter.run(CITY);
 
-    expect(records[0].priceAmount).toBeUndefined();
+    expect(records![0].priceAmount).toBeUndefined();
   });
 
-  it("returns nothing without a client ID, never reaching the network", async () => {
+  it("returns null (not attempted) without a client ID, never reaching the network", async () => {
     delete process.env.SEATGEEK_CLIENT_ID;
     const { seatgeekAdapter } = await import("./seatgeek");
 
     const records = await seatgeekAdapter.run(CITY);
 
-    expect(records).toEqual([]);
+    expect(records).toBeNull();
     expect(fetchWithRetry).not.toHaveBeenCalled();
   });
 });

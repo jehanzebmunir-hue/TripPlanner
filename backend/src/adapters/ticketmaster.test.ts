@@ -29,7 +29,7 @@ describe("ticketmasterAdapter", () => {
 
     const records = await ticketmasterAdapter.run(CITY);
 
-    expect(records[0].priceAmount).toBe(45.5);
+    expect(records![0].priceAmount).toBe(45.5);
   });
 
   it("leaves priceAmount undefined rather than guessing when the API doesn't provide pricing", async () => {
@@ -38,16 +38,16 @@ describe("ticketmasterAdapter", () => {
 
     const records = await ticketmasterAdapter.run(CITY);
 
-    expect(records[0].priceAmount).toBeUndefined();
+    expect(records![0].priceAmount).toBeUndefined();
   });
 
-  it("returns nothing without an API key, never reaching the network", async () => {
+  it("returns null (not attempted) without an API key, never reaching the network", async () => {
     delete process.env.TICKETMASTER_API_KEY;
     const { ticketmasterAdapter } = await import("./ticketmaster");
 
     const records = await ticketmasterAdapter.run(CITY);
 
-    expect(records).toEqual([]);
+    expect(records).toBeNull();
     expect(fetchWithRetry).not.toHaveBeenCalled();
   });
 });

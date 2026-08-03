@@ -75,11 +75,11 @@ describe("overpassAdapter", () => {
 
     const records = await overpassAdapter.run(CITY);
 
-    expect(records.find((r) => r.name === "A Park")?.category).toBe("outdoor-nature");
-    expect(records.find((r) => r.name === "A Theatre")?.category).toBe("arts-entertainment-nightlife");
-    expect(records.find((r) => r.name === "A Market")?.category).toBe("shopping");
-    expect(records.find((r) => r.name === "A Monument")?.category).toBe("sightseeing-culture");
-    expect(records.find((r) => r.name === "A Museum")?.category).toBe("sightseeing-culture");
+    expect(records!.find((r) => r.name === "A Park")?.category).toBe("outdoor-nature");
+    expect(records!.find((r) => r.name === "A Theatre")?.category).toBe("arts-entertainment-nightlife");
+    expect(records!.find((r) => r.name === "A Market")?.category).toBe("shopping");
+    expect(records!.find((r) => r.name === "A Monument")?.category).toBe("sightseeing-culture");
+    expect(records!.find((r) => r.name === "A Museum")?.category).toBe("sightseeing-culture");
   });
 
   it("normalizes real elements, keeping only ones with a name and coordinates", async () => {
@@ -127,7 +127,7 @@ describe("overpassAdapter", () => {
 
     const records = await overpassAdapter.run(CITY);
 
-    expect(records[0].address).toBe("107 Rue de Rivoli, Paris");
+    expect(records![0].address).toBe("107 Rue de Rivoli, Paris");
   });
 
   it("never fabricates a price from OSM's free-text fee/charge tags", async () => {
@@ -138,7 +138,7 @@ describe("overpassAdapter", () => {
 
     const records = await overpassAdapter.run(CITY);
 
-    expect(records[0].priceAmount).toBeUndefined();
+    expect(records![0].priceAmount).toBeUndefined();
   });
 
   it("returns [] rather than throwing when the request fails", async () => {
@@ -160,7 +160,7 @@ describe("overpassAdapter", () => {
     const records = await overpassAdapter.run(CITY);
 
     expect(photoUrlForWikidataId).toHaveBeenCalledWith("Q1996069");
-    expect(records[0].photoUrl).toBe("https://commons.wikimedia.org/wiki/Special:FilePath/example.jpg");
+    expect(records![0].photoUrl).toBe("https://commons.wikimedia.org/wiki/Special:FilePath/example.jpg");
   });
 
   it("leaves photoUrl undefined rather than guessing when there's no wikidata tag at all", async () => {
@@ -170,7 +170,7 @@ describe("overpassAdapter", () => {
     const records = await overpassAdapter.run(CITY);
 
     expect(photoUrlForWikidataId).not.toHaveBeenCalled();
-    expect(records[0].photoUrl).toBeUndefined();
+    expect(records![0].photoUrl).toBeUndefined();
   });
 
   it("leaves photoUrl undefined rather than failing the whole adapter when a photo lookup throws", async () => {
@@ -182,8 +182,8 @@ describe("overpassAdapter", () => {
 
     const records = await overpassAdapter.run(CITY);
 
-    expect(records[0].name).toBe("Broken link");
-    expect(records[0].photoUrl).toBeUndefined();
+    expect(records![0].name).toBe("Broken link");
+    expect(records![0].photoUrl).toBeUndefined();
   });
 
   it("caps photo lookups per run rather than looking up every single element", async () => {

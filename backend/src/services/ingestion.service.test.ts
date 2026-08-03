@@ -35,14 +35,22 @@ const workingAdapter = {
 const emptyAdapter = { name: "empty", run: vi.fn().mockResolvedValue([]) };
 const brokenAdapter = { name: "broken", run: vi.fn().mockRejectedValue(new Error("upstream 500")) };
 const overpassAdapter = { name: "overpass", run: vi.fn().mockResolvedValue([]) };
+const notConfiguredAdapter = { name: "notConfigured", run: vi.fn().mockResolvedValue(null) };
 
 vi.mock("../adapters", () => ({
-  ADAPTERS: { working: workingAdapter, empty: emptyAdapter, broken: brokenAdapter, overpass: overpassAdapter },
+  ADAPTERS: {
+    working: workingAdapter,
+    empty: emptyAdapter,
+    broken: brokenAdapter,
+    overpass: overpassAdapter,
+    notConfigured: notConfiguredAdapter,
+  },
   adaptersForCity: (city: { extraAdapters?: string[] }) => [
     "working",
     "empty",
     "broken",
     "overpass",
+    "notConfigured",
     ...(city.extraAdapters ?? []),
   ],
 }));
@@ -92,6 +100,17 @@ describe("ingestCity", () => {
     expect(result.broken.ok).toBe(false);
     expect(result.broken.count).toBe(0);
     expect(result.broken.error).toMatch(/upstream 500/);
+  });
+
+  it("marks an adapter that returns null as skipped: true, distinct from a real empty result, and doesn't record health for it", async () => {
+    const { ingestCity } = await import("./ingestion.service");
+    const result = await ingestCity("testville");
+
+    expect(result.notConfigured).toEqual({ count: 0, ok: true, skipped: true });
+    const notConfiguredHealthCall = healthUpsert.mock.calls.find(
+      (c) => (c[0] as { where: { city_adapter: { adapter: string } } }).where.city_adapter.adapter === "notConfigured"
+    );
+    expect(notConfiguredHealthCall).toBeUndefined();
   });
 
   it("upserts one record per place returned, keyed by city+source+externalId", async () => {

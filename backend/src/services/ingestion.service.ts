@@ -21,6 +21,11 @@ export interface AdapterOutcome {
   // (e.g. an unconfirmed-coverage market, or a genuinely quiet week).
   ok: boolean;
   error?: string;
+  // true when the adapter returned null (not attempted -- e.g. no API key
+  // set), as opposed to a real call that came back with zero records.
+  // AdapterHealth is never written for a skipped run, so /api/city-health
+  // correctly omits it rather than showing a misleading "success."
+  skipped?: boolean;
 }
 
 async function recordAdapterHealth(city: string, adapter: string, ok: boolean, error?: string): Promise<void> {
@@ -64,6 +69,11 @@ export async function ingestCity(
       console.error(`[ingest] ${adapterName} failed:`, message);
       results[adapterName] = { count: 0, ok: false, error: message };
       await recordAdapterHealth(city.slug, adapterName, false, message);
+      continue;
+    }
+
+    if (records === null) {
+      results[adapterName] = { count: 0, ok: true, skipped: true };
       continue;
     }
     await recordAdapterHealth(city.slug, adapterName, true);

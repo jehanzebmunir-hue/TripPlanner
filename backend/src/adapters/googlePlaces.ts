@@ -33,7 +33,7 @@ export const googlePlacesAdapter: SourceAdapter = {
     const apiKey = process.env.GOOGLE_PLACES_API_KEY;
     if (!apiKey) {
       console.warn("[google-places] GOOGLE_PLACES_API_KEY not set — skipping (metered API, see architecture notes)");
-      return [];
+      return null;
     }
 
     const maxCallsPerDay = Number(process.env.GOOGLE_PLACES_MAX_CALLS_PER_DAY ?? DEFAULT_MAX_CALLS_PER_DAY);

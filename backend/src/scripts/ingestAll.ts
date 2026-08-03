@@ -18,7 +18,7 @@ async function main() {
     const outcome = await ingestCity(city.slug);
     results.push({ slug: city.slug, outcome });
     const summary = Object.entries(outcome)
-      .map(([adapter, o]) => `${adapter}:${o.ok ? o.count : "FAIL"}`)
+      .map(([adapter, o]) => `${adapter}:${o.skipped ? "SKIP" : o.ok ? o.count : "FAIL"}`)
       .join(" ");
     console.log(`${city.slug.padEnd(24)} ${summary}`);
     await sleep(DELAY_BETWEEN_CITIES_MS);
