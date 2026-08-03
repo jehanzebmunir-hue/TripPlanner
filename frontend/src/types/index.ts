@@ -117,6 +117,11 @@ export interface CitySummary {
   country: string;
   currency: string;
   timezone: string;
+  // Real city-center coordinates -- used to sort Discover's place list by
+  // distance from the city center. Optional since older cached responses
+  // may predate this field.
+  lat?: number;
+  lng?: number;
   // "curated" = config/cities.ts, hand-verified. "community" = resolved on
   // demand from real OpenStreetMap data only, via /api/cities/search.
   // Absent on older cached responses -- treat as curated.

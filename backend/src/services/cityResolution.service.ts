@@ -11,6 +11,12 @@ export interface CitySearchResult {
   country: string;
   currency: string;
   timezone: string;
+  // Real coordinates, same ones the overpass adapter anchors its radius
+  // queries on -- exposed here too so the frontend can do its own
+  // distance-from-city-center calculations (e.g. sorting Discover results)
+  // without duplicating a second copy of this data.
+  lat: number;
+  lng: number;
   // "curated" = config/cities.ts, hand-verified market strings and (for
   // priority cities) google-places data. "community" = resolved on demand
   // from real OpenStreetMap data only -- honestly fewer curated details,
@@ -44,6 +50,8 @@ function registryMatches(query: string): CitySearchResult[] {
     country: c.country,
     currency: getCurrency(c),
     timezone: getTimezone(c),
+    lat: c.lat,
+    lng: c.lng,
     dataSource: "curated" as const,
   }));
 }
@@ -69,6 +77,8 @@ async function cachedMatches(query: string, exclude: Set<string>): Promise<CityS
       country: r.country,
       currency: r.currency,
       timezone: r.timezone,
+      lat: r.lat,
+      lng: r.lng,
       dataSource: "community" as const,
     }));
 }
@@ -126,6 +136,8 @@ export async function searchCities(query: string): Promise<CitySearchResult[]> {
       country: row.country,
       currency: row.currency,
       timezone: row.timezone,
+      lat: row.lat,
+      lng: row.lng,
       dataSource: "community",
     });
   }
@@ -148,6 +160,8 @@ export async function listAllCities(): Promise<CitySearchResult[]> {
     country: c.country,
     currency: getCurrency(c),
     timezone: getTimezone(c),
+    lat: c.lat,
+    lng: c.lng,
     dataSource: "curated" as const,
   }));
   const resolved = await prisma.resolvedCity.findMany();
@@ -159,6 +173,8 @@ export async function listAllCities(): Promise<CitySearchResult[]> {
       country: r.country,
       currency: r.currency,
       timezone: r.timezone,
+      lat: r.lat,
+      lng: r.lng,
       dataSource: "community" as const,
     })),
   ];

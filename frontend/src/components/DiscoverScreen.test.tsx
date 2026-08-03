@@ -232,4 +232,42 @@ describe("DiscoverScreen", () => {
     expect(addItem).toHaveBeenCalledWith("t1", "p1");
     expect(screen.queryByText(/removed the met/i)).not.toBeInTheDocument();
   });
+
+  it("sorts by price low to high, keeping unverified prices at the end rather than treating them as free", async () => {
+    listPlaces.mockResolvedValue([
+      { ...PLACE, id: "p1", name: "Unverified", priceAmount: null },
+      { ...PLACE, id: "p2", name: "Pricier", priceAmount: 40 },
+      { ...PLACE, id: "p3", name: "Cheaper", priceAmount: 10 },
+    ]);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
+    await waitFor(() => expect(screen.getByText("Unverified")).toBeInTheDocument());
+
+    await user.selectOptions(screen.getByRole("combobox", { name: "Sort by" }), "price");
+
+    const names = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(names).toEqual(["Cheaper", "Pricier", "Unverified"]);
+  });
+
+  it("sorts by distance from the active city's center, using real coordinates on both sides", async () => {
+    listPlaces.mockResolvedValue([
+      { ...PLACE, id: "p1", name: "Far", lat: 40.9, lng: -74.3 },
+      { ...PLACE, id: "p2", name: "No coords" },
+      { ...PLACE, id: "p3", name: "Near", lat: 40.72, lng: -74.0 },
+    ]);
+    listCities.mockResolvedValue([{ ...CITIES[0], lat: 40.7128, lng: -74.006 }, CITIES[1]]);
+    getCityHealth.mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
+    await waitFor(() => expect(screen.getByText("Far")).toBeInTheDocument());
+
+    await user.selectOptions(screen.getByRole("combobox", { name: "Sort by" }), "distance");
+
+    const names = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
+    expect(names).toEqual(["Near", "Far", "No coords"]);
+  });
 });

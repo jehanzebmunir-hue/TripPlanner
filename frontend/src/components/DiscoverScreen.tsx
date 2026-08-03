@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CATEGORIES } from "../categories";
+import { haversineKm } from "../geo";
 import {
   useAddItem,
   useCities,
@@ -19,6 +20,8 @@ import { PlaceCardSkeleton } from "./Skeleton";
 // to catch a misclick, short enough not to leave a stale toast around.
 const UNDO_WINDOW_MS = 6000;
 
+type SortBy = "default" | "price" | "confidence" | "distance";
+
 interface Props {
   city: string;
   legs?: TripLeg[];
@@ -34,6 +37,7 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
     t(`categories.${slug}`, CATEGORIES.find((c) => c.slug === slug)?.label ?? slug);
   const [query, setQuery] = useState("");
   const [showMap, setShowMap] = useState(true);
+  const [sortBy, setSortBy] = useState<SortBy>("default");
   // Which of this trip's cities Discover is currently browsing -- defaults
   // to the trip's primary city. Adding an item while browsing a leg's city
   // tags it with that leg automatically server-side (the place's own city
@@ -110,6 +114,29 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
     );
   const degraded = (health ?? []).filter((h) => h.degraded);
 
+  const activeCityCenter = cities?.find((c) => c.slug === activeCity);
+  // Real values only, sorted to the end rather than fabricated -- a place
+  // with no verified price, no confidence-decay data, or no coordinates
+  // yet is not "worst," it's "unknown," and shouldn't be conflated with a
+  // real bottom-of-the-list value like $0 or 0% confidence.
+  const sorted = [...filtered].sort((a, b) => {
+    if (sortBy === "price") {
+      if (a.priceAmount == null) return b.priceAmount == null ? 0 : 1;
+      if (b.priceAmount == null) return -1;
+      return a.priceAmount - b.priceAmount;
+    }
+    if (sortBy === "confidence") return b.confidence - a.confidence;
+    if (sortBy === "distance" && activeCityCenter?.lat != null && activeCityCenter?.lng != null) {
+      const center = { lat: activeCityCenter.lat, lng: activeCityCenter.lng };
+      const distA = a.lat != null && a.lng != null ? haversineKm(center, { lat: a.lat, lng: a.lng }) : null;
+      const distB = b.lat != null && b.lng != null ? haversineKm(center, { lat: b.lat, lng: b.lng }) : null;
+      if (distA == null) return distB == null ? 0 : 1;
+      if (distB == null) return -1;
+      return distA - distB;
+    }
+    return 0;
+  });
+
   return (
     <div className="space-y-3">
       <h2 className="sr-only">{t("app.tabs.discover")}</h2>
@@ -157,14 +184,27 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
         })}
       </p>
 
-      <input
-        type="search"
-        value={query}
-        onChange={(e) => setQuery(e.target.value)}
-        placeholder={t("discover.searchPlaceholder")}
-        aria-label={t("discover.searchLabel")}
-        className="w-full border border-line bg-paper-raised px-3 py-2 text-sm"
-      />
+      <div className="flex gap-2">
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder={t("discover.searchPlaceholder")}
+          aria-label={t("discover.searchLabel")}
+          className="flex-1 border border-line bg-paper-raised px-3 py-2 text-sm"
+        />
+        <select
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value as SortBy)}
+          aria-label={t("discover.sortLabel")}
+          className="border border-line bg-paper-raised px-2 py-2 text-sm"
+        >
+          <option value="default">{t("discover.sortDefault")}</option>
+          <option value="price">{t("discover.sortPrice")}</option>
+          <option value="confidence">{t("discover.sortConfidence")}</option>
+          <option value="distance">{t("discover.sortDistance")}</option>
+        </select>
+      </div>
 
       {filtered.length === 0 && (places ?? []).length > 0 && (
         <p className="text-sm text-ink-faint">{t("discover.noFilterMatches")}</p>
@@ -183,12 +223,12 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
           >
             {showMap ? t("map.hide") : t("map.show")}
           </button>
-          {showMap && <MapView places={filtered} />}
+          {showMap && <MapView places={sorted} />}
         </div>
       )}
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {filtered.map((p) => (
+        {sorted.map((p) => (
           <PlaceCard
             key={p.id}
             place={p}
