@@ -20,6 +20,8 @@ export const en = {
     pricesThere: "Prices there: {{currency}}",
     tabs: { setup: "setup", discover: "discover", itinerary: "itinerary", checklist: "checklist" },
     setUpFirst: "Set up a trip first.",
+    tripChangedElsewhere: "This trip was updated elsewhere.",
+    refresh: "Refresh",
     skipToContent: "Skip to content",
     attribution: "Place data © <link>OpenStreetMap</link> contributors",
     support: "Support this project",

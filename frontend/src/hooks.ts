@@ -84,6 +84,11 @@ function useInvalidateTrip(tripId?: string) {
   };
 }
 
+/** Re-syncs trip/itinerary/checklist together after noticing a real change made elsewhere (see App.tsx's staleness banner). */
+export function useRefreshTrip(tripId?: string) {
+  return useInvalidateTrip(tripId);
+}
+
 export function useUpdateTrip(tripId?: string) {
   const invalidate = useInvalidateTrip(tripId);
   return useMutation({

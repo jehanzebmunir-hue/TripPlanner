@@ -60,6 +60,10 @@ export interface Trip {
   homeCurrency?: string | null;
   legs: TripLeg[];
   items: TripItem[];
+  // Bumped on every real mutation (touchTrip) -- used client-side only to
+  // notice a trip changed elsewhere (another tab, another device via the
+  // shared edit link) since this session first loaded it.
+  updatedAt: string;
 }
 
 // Only the raw response from creating a trip includes this -- GET /trips/:id

@@ -22,6 +22,8 @@ export const es: TranslationResource = {
     pricesThere: "Precios allí: {{currency}}",
     tabs: { setup: "planificar", discover: "descubrir", itinerary: "itinerario", checklist: "lista" },
     setUpFirst: "Primero planifica un viaje.",
+    tripChangedElsewhere: "Este viaje se actualizó en otro lugar.",
+    refresh: "Actualizar",
     skipToContent: "Saltar al contenido",
     attribution: "Datos de lugares © colaboradores de <link>OpenStreetMap</link>",
     support: "Apoya este proyecto",

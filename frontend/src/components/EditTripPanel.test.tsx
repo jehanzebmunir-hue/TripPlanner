@@ -23,6 +23,7 @@ const TRIP: Trip = {
     { id: "leg1", city: "osaka", destination: "Osaka, Japan", startDate: "2026-10-12T00:00:00.000Z", endDate: "2026-10-13T00:00:00.000Z", order: 0 },
   ],
   items: [],
+  updatedAt: "2026-08-01T00:00:00.000Z",
 };
 
 describe("EditTripPanel", () => {

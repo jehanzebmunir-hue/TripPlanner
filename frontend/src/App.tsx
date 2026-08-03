@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { setEditToken } from "./api";
 import { AccountPanel } from "./components/AccountPanel";
@@ -7,7 +7,7 @@ import { DiscoverScreen } from "./components/DiscoverScreen";
 import { EditTripPanel } from "./components/EditTripPanel";
 import { ItineraryScreen } from "./components/ItineraryScreen";
 import { SetupScreen } from "./components/SetupScreen";
-import { useCities, useTrip } from "./hooks";
+import { useCities, useRefreshTrip, useTrip } from "./hooks";
 import { Language, setLanguage, SUPPORTED_LANGUAGES } from "./i18n";
 import { CreatedTrip } from "./types";
 import { useOnlineStatus } from "./useOnlineStatus";
@@ -36,6 +36,34 @@ export default function App() {
   const { data: cities } = useCities();
   const online = useOnlineStatus();
   const tripCurrency = cities?.find((c) => c.slug === trip?.city)?.currency;
+  const refreshTrip = useRefreshTrip(tripId);
+
+  // Notices a real change made elsewhere -- another tab, another device via
+  // the shared edit link -- since this session first loaded this trip.
+  // Deliberately lightweight: no dedicated polling loop, just comparing
+  // against whatever React Query's own default refetch-on-window-focus
+  // behavior already brings back, since a background poll tight enough to
+  // catch this within seconds would mean real, mostly-wasted load against
+  // a change that in practice happens rarely.
+  const seenUpdatedAtRef = useRef<string | null>(null);
+  const [tripChangedElsewhere, setTripChangedElsewhere] = useState(false);
+
+  useEffect(() => {
+    seenUpdatedAtRef.current = null;
+    setTripChangedElsewhere(false);
+  }, [tripId]);
+
+  useEffect(() => {
+    if (!trip) return;
+    if (seenUpdatedAtRef.current === null) seenUpdatedAtRef.current = trip.updatedAt;
+    else if (trip.updatedAt !== seenUpdatedAtRef.current) setTripChangedElsewhere(true);
+  }, [trip]);
+
+  function handleRefreshTrip() {
+    seenUpdatedAtRef.current = trip?.updatedAt ?? null;
+    setTripChangedElsewhere(false);
+    refreshTrip();
+  }
 
   useEffect(() => {
     localStorage.setItem("interests", JSON.stringify(interests));
@@ -86,6 +114,17 @@ export default function App() {
       {!online && (
         <div className="bg-aging-bg px-5 py-1.5 text-center font-mono text-[11px] uppercase tracking-wide text-aging">
           {t("app.offline")}
+        </div>
+      )}
+      {tripChangedElsewhere && (
+        <div
+          role="status"
+          className="flex items-center justify-between gap-3 bg-aging-bg px-5 py-1.5 font-mono text-[11px] uppercase tracking-wide text-aging"
+        >
+          <span>{t("app.tripChangedElsewhere")}</span>
+          <button type="button" onClick={handleRefreshTrip} className="shrink-0 underline">
+            {t("app.refresh")}
+          </button>
         </div>
       )}
       <header className="sticky top-0 z-10 border-b border-line bg-paper px-5 pb-3 pt-6">
