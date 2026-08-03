@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { withAffiliateTracking } from "../lib/affiliateLinks";
 import { getChecklist, toggleChecklistItem } from "../services/checklist.service";
 import { estimateTransit } from "../services/transit";
 import { AuthedRequest, attachEditToken, optionalAuth, requireAuth } from "../middleware/auth.middleware";
@@ -118,7 +119,7 @@ router.get("/:id/itinerary", async (req, res, next) => {
         dayIndex: day.dayIndex, // a clean global position, for display/grouping only
         date: day.date,
         stops: places.map((place, idx) => ({
-          place,
+          place: { ...place, bookingRef: withAffiliateTracking(place.bookingRef) },
           transitFromPrevious: idx === 0 ? null : estimateTransit(places[idx - 1], place),
           // The item's real, leg-relative dayIndex and legId -- what
           // PATCH .../items/:placeId actually expects (see

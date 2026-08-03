@@ -1,5 +1,6 @@
 import { prisma } from "../lib/prisma";
 import { computeConfidence } from "../lib/decay";
+import { withAffiliateTracking } from "../lib/affiliateLinks";
 import { ensureCityFresh } from "./ingestion.service";
 
 export async function listPlaces(city: string, opts: { category?: string; tier?: string } = {}) {
@@ -16,7 +17,7 @@ export async function listPlaces(city: string, opts: { category?: string; tier?:
 
   return rows.map((p) => {
     const { confidence, band, daysSince } = computeConfidence(p.tier, p.lastVerifiedAt);
-    return { ...p, confidence, band, daysSince };
+    return { ...p, bookingRef: withAffiliateTracking(p.bookingRef), confidence, band, daysSince };
   });
 }
 
@@ -28,5 +29,5 @@ export async function confirmPlace(placeId: string, vote: "valid" | "invalid") {
 
   const place = await prisma.place.update({ where: { id: placeId }, data: { lastVerifiedAt } });
   const { confidence, band, daysSince } = computeConfidence(place.tier, place.lastVerifiedAt);
-  return { ...place, confidence, band, daysSince };
+  return { ...place, bookingRef: withAffiliateTracking(place.bookingRef), confidence, band, daysSince };
 }
