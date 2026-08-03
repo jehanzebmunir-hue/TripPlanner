@@ -48,7 +48,10 @@ describe("App footer support link", () => {
 
   it("shows no support link when VITE_SUPPORT_URL isn't set", async () => {
     renderApp();
-    expect(await screen.findByText(/openstreetmap/i)).toBeInTheDocument();
+    // A real link specifically, not just any text mentioning OpenStreetMap
+    // -- SetupScreen's own trust explainer also names it as one of several
+    // real data sources, as plain text rather than a link.
+    expect(await screen.findByRole("link", { name: /openstreetmap/i })).toBeInTheDocument();
     expect(screen.queryByText(/support this project/i)).not.toBeInTheDocument();
   });
 

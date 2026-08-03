@@ -23,13 +23,17 @@ export const en = {
     tripChangedElsewhere: "This trip was updated elsewhere.",
     refresh: "Refresh",
     skipToContent: "Skip to content",
-    attribution: "Place data © <link>OpenStreetMap</link> contributors",
+    attribution: "Place data © %LINK% contributors",
     support: "Support this project",
     language: "Language",
   },
   setup: {
     heading: "Plan the trip",
     subheading: "Set the basics — Discover tunes itself to this.",
+    trustTagline: "Every place here is real, sourced, and dated — never AI-guessed.",
+    trustLearnMore: "Why this is different →",
+    trustExplainer:
+      "Nothing here is generated. Every place comes from a real source — OpenStreetMap, Google Places, Ticketmaster, SeatGeek, or a city's own open-data feed — and shows a real \"last verified\" date, not a guess. Prices are either a real sourced number, confirmed free, or shown as unverified — never estimated. It stays free by running on free, public data wherever possible.",
     destination: "Destination",
     dates: "Dates",
     startDate: "Start date",

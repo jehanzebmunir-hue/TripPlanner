@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Trans, useTranslation } from "react-i18next";
+import { useTranslation } from "react-i18next";
 import { setEditToken } from "./api";
 import { trackEvent } from "./analytics";
 import { AccountPanel } from "./components/AccountPanel";
@@ -241,19 +241,30 @@ export default function App() {
           is normally attributed in an app rather than in a curated dataset. */}
       <footer className="space-y-1 border-t border-line px-5 py-3 text-center font-mono text-[10px] uppercase tracking-wide text-ink-faint">
         <p>
-          <Trans
-            i18nKey="app.attribution"
-            components={{
-              link: (
+          {/* Split on a plain %LINK% token rather than react-i18next's Trans
+              component -- verified live that this Trans/i18next version
+              combo duplicates the surrounding text and drops the tag
+              entirely whenever real text precedes it in Trans's children,
+              which silently left this link with no accessible name.
+              "OpenStreetMap" itself stays untranslated, a proper noun like
+              every other real place name in this app. */}
+          {(() => {
+            const [before, after] = t("app.attribution").split("%LINK%");
+            return (
+              <>
+                {before}
                 <a
                   href="https://www.openstreetmap.org/copyright"
                   target="_blank"
                   rel="noreferrer"
                   className="underline"
-                />
-              ),
-            }}
-          />
+                >
+                  OpenStreetMap
+                </a>
+                {after}
+              </>
+            );
+          })()}
         </p>
         {/* Off by default -- no real support-link URL exists yet. Set
             VITE_SUPPORT_URL at build time (Render env vars) once you've

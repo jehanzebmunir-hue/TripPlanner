@@ -25,13 +25,17 @@ export const es: TranslationResource = {
     tripChangedElsewhere: "Este viaje se actualizó en otro lugar.",
     refresh: "Actualizar",
     skipToContent: "Saltar al contenido",
-    attribution: "Datos de lugares © colaboradores de <link>OpenStreetMap</link>",
+    attribution: "Datos de lugares © colaboradores de %LINK%",
     support: "Apoya este proyecto",
     language: "Idioma",
   },
   setup: {
     heading: "Planifica el viaje",
     subheading: "Define lo básico — Descubrir se ajusta a esto.",
+    trustTagline: "Cada lugar aquí es real, verificado y con fecha — nunca inventado por IA.",
+    trustLearnMore: "¿Por qué esto es diferente? →",
+    trustExplainer:
+      "Nada aquí es generado. Cada lugar proviene de una fuente real — OpenStreetMap, Google Places, Ticketmaster, SeatGeek, o los datos abiertos propios de una ciudad — y muestra una fecha real de \"última verificación\", no una suposición. Los precios son un número real y verificado, confirmados como gratis, o se muestran como no verificados — nunca estimados. Se mantiene gratuito usando datos públicos y gratuitos siempre que sea posible.",
     destination: "Destino",
     dates: "Fechas",
     startDate: "Fecha de inicio",

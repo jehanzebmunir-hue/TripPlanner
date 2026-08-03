@@ -129,6 +129,19 @@ export function SetupScreen({ interests, onInterestsChange, onCreated }: Props) 
         <p className="text-sm text-ink-soft">{t("setup.subheading")}</p>
       </div>
 
+      {/* The real differentiator against AI trip planners -- surfaced here,
+          first, rather than left as an invisible data model only visible
+          in each place card's small "verified Xd ago" badge. <details> is
+          used deliberately: real keyboard/screen-reader disclosure
+          semantics for free, no JS state needed for something this simple. */}
+      <div className="border-l-2 border-accent pl-3 text-xs text-ink-soft">
+        <p className="font-semibold text-ink">{t("setup.trustTagline")}</p>
+        <details className="mt-1">
+          <summary className="cursor-pointer text-accent underline">{t("setup.trustLearnMore")}</summary>
+          <p className="mt-1.5">{t("setup.trustExplainer")}</p>
+        </details>
+      </div>
+
       <div>
         <label className="mb-2 block font-mono text-[11px] uppercase tracking-wide text-ink-faint">
           {t("setup.destination")}
