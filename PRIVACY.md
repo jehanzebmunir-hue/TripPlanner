@@ -2,7 +2,7 @@
 
 > **This is a working draft, not a reviewed legal document.** It was written directly from the current codebase — every claim below reflects what the app actually does today, not aspirational or templated language. Before this goes live, it needs a real review (a lawyer, or at minimum a founder decision on retention/deletion policy), and it needs to be re-checked against the code any time data handling changes. Placeholders are marked `[ ]`.
 
-**Last drafted:** 2026-08-01, against the codebase as of the 129-city release. Updated from the 2026-07-31 draft to reflect real account-deletion and retention behavior that's since been built — see "Data retention and deletion" and "Your rights" below, both of which changed from `[ ]` placeholders to actual described behavior.
+**Last drafted:** 2026-08-01, against the codebase as of the 129-city release. Updated from the 2026-07-31 draft to reflect real account-deletion and retention behavior that's since been built — see "Data retention and deletion" and "Your rights" below, both of which changed from `[ ]` placeholders to actual described behavior. Updated again on 2026-08-03 for self-hosted, anonymous, aggregate-only usage analytics — see "What we collect."
 
 ## What this covers
 
@@ -16,7 +16,9 @@ Trip Planner (the app) helps you discover things to do in a city, plan an itiner
 
 **Trip data**, with or without an account: the destination city, trip dates, selected interests, which places you've added to your itinerary, which day each is assigned to, and your checklist progress. This is the data the app needs to function — there's no data collected beyond what's shown back to you in the product.
 
-**What we do not collect:** no payment information (the app never handles payment — it links out to third-party booking sites), no location tracking, no device fingerprinting, no analytics or advertising trackers of any kind. `[ ]` *if analytics are added later, this section and the rest of this policy need to be updated before that ships.*
+**What we do not collect:** no payment information (the app never handles payment — it links out to third-party booking sites), no location tracking, no device fingerprinting, no advertising trackers of any kind, and no third-party analytics vendor.
+
+**Anonymous usage analytics, self-hosted.** The app records that certain interactions happened — for example, that a map was opened, an itinerary was exported, or a trip's dates were edited — so we can tell which features are actually used. Each event is just an event name, a timestamp, and sometimes one bounded, non-identifying value (a sort mode, a language code, a city slug) — never your name, email, IP address, device/browser identifier, or account. Events aren't linked to a specific trip, account, or person, and can't be traced back to one. This data stays on our own servers; it is never sent to a third-party analytics or advertising company.
 
 ## How your data is used
 

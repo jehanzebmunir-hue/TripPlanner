@@ -249,3 +249,19 @@ model ChecklistCheck {
 
   @@unique([tripId, itemKey])
 }
+
+// ── Analytics ────────────────────────────────────────────────────────────────
+// Self-hosted, aggregate-only, no third-party vendor and no PII -- exists
+// because this app shipped a large number of features with zero way to tell
+// which ones anyone actually uses. Deliberately minimal: an event name, an
+// optional real context value (a city slug or category, never anything
+// identifying a person), and when. No IP, no user agent, no session/device
+// id, no account linkage even for logged-in users. See PRIVACY.md.
+model AnalyticsEvent {
+  id        String   @id @default(cuid())
+  name      String
+  context   String?
+  createdAt DateTime @default(now())
+
+  @@index([name, createdAt])
+}

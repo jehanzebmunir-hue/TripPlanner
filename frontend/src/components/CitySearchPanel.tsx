@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { trackEvent } from "../analytics";
 import { api } from "../api";
 import { CitySummary } from "../types";
 
@@ -116,6 +117,7 @@ export function CitySearchPanel({ onPick }: Props) {
               onPick(r);
               setOpen(false);
               setQuery("");
+              trackEvent("city_search_used", r.dataSource);
             }}
             className="block w-full border border-line bg-paper p-3 text-left hover:border-accent"
           >

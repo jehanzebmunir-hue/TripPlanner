@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Trans, useTranslation } from "react-i18next";
 import { setEditToken } from "./api";
+import { trackEvent } from "./analytics";
 import { AccountPanel } from "./components/AccountPanel";
 import { ChecklistScreen } from "./components/ChecklistScreen";
 import { DiscoverScreen } from "./components/DiscoverScreen";
@@ -68,6 +69,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem("interests", JSON.stringify(interests));
   }, [interests]);
+
+  useEffect(() => {
+    trackEvent("tab_view", tab);
+  }, [tab]);
 
   function setTripId(id: string) {
     setTripIdState(id);
@@ -145,7 +150,10 @@ export default function App() {
                 <button
                   key={lang}
                   type="button"
-                  onClick={() => setLanguage(lang)}
+                  onClick={() => {
+                    setLanguage(lang);
+                    trackEvent("language_changed", lang);
+                  }}
                   aria-pressed={i18n.language === lang}
                   className={`px-1 py-1 ${i18n.language === lang ? "text-accent underline" : "underline"}`}
                 >

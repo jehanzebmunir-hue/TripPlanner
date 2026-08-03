@@ -23,6 +23,9 @@ vi.mock("../api", () => ({
   },
 }));
 
+const trackEvent = vi.fn();
+vi.mock("../analytics", () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
+
 const CITIES = [
   { slug: "nyc", name: "New York, NY", country: "US", currency: "USD", timezone: "America/New_York" },
   { slug: "paris", name: "Paris, France", country: "FR", currency: "EUR", timezone: "Europe/Paris" },
@@ -307,5 +310,36 @@ describe("DiscoverScreen", () => {
 
     const names = screen.getAllByRole("heading", { level: 3 }).map((h) => h.textContent);
     expect(names).toEqual(["Near", "Far", "No coords"]);
+  });
+
+  it("hides the map by default and tracks a real event when a user actually opens it", async () => {
+    listPlaces.mockResolvedValue([PLACE]);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
+    await waitFor(() => expect(screen.getByText("The Met")).toBeInTheDocument());
+
+    expect(document.querySelector(".leaflet-container")).toBeNull();
+    expect(trackEvent).not.toHaveBeenCalledWith("map_toggled", expect.anything());
+
+    await user.click(screen.getByRole("button", { name: /show map/i }));
+
+    expect(trackEvent).toHaveBeenCalledWith("map_toggled", "discover");
+  });
+
+  it("tracks a real event with the chosen sort mode when sort changes", async () => {
+    listPlaces.mockResolvedValue([PLACE]);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
+    await waitFor(() => expect(screen.getByText("The Met")).toBeInTheDocument());
+
+    await user.selectOptions(screen.getByRole("combobox", { name: "Sort by" }), "confidence");
+
+    expect(trackEvent).toHaveBeenCalledWith("sort_changed", "confidence");
   });
 });

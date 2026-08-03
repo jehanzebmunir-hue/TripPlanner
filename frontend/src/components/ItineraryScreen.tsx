@@ -1,6 +1,7 @@
 import { TFunction } from "i18next";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { trackEvent } from "../analytics";
 import { daysBetween } from "../dateUtils";
 import { useAutoFillItinerary, useCities, useItinerary, useMoveItem, useTrip } from "../hooks";
 import { buildIcs, downloadIcs } from "../ics";
@@ -41,12 +42,16 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
   // rather than carried in dataTransfer, since it's already all in memory.
   const [draggedStop, setDraggedStop] = useState<ItineraryStop | null>(null);
   const [dragOverDayIndex, setDragOverDayIndex] = useState<number | null>(null);
-  const [showMaps, setShowMaps] = useState(true);
+  // Collapsed by default -- previously each day mounted its own live
+  // Leaflet + tile-load instance unconditionally, so a 7-day trip loaded
+  // 7 concurrent map instances whether or not anyone opened them.
+  const [showMaps, setShowMaps] = useState(false);
 
   function handleExport() {
     if (!days) return;
     const ics = buildIcs(trip?.destination ?? "Trip", days);
     downloadIcs(`${(trip?.destination ?? "trip").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.ics`, ics);
+    trackEvent("itinerary_exported");
   }
 
   if (isLoading) {
@@ -70,7 +75,10 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
         {trip && (
           <button
             type="button"
-            onClick={() => autoFill.mutate(trip)}
+            onClick={() => {
+              autoFill.mutate(trip);
+              trackEvent("autofill_used");
+            }}
             disabled={autoFill.isPending}
             className="w-full border border-accent py-2.5 text-sm font-semibold text-accent disabled:opacity-60"
           >
@@ -148,7 +156,10 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
         <div className="flex shrink-0 gap-3">
           <button
             type="button"
-            onClick={() => setShowMaps((v) => !v)}
+            onClick={() => {
+              setShowMaps((v) => !v);
+              trackEvent("map_toggled", "itinerary");
+            }}
             className="font-mono text-[11px] uppercase tracking-wide text-ink-faint underline"
           >
             {showMaps ? t("map.hide") : t("map.show")}
@@ -190,7 +201,10 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
               setDragOverDayIndex(null);
               if (!draggedStop) return;
               const targetDayIndex = targetDayIndexFor(draggedStop, day);
-              if (targetDayIndex !== null) moveItem.mutate({ placeId: draggedStop.place.id, dayIndex: targetDayIndex });
+              if (targetDayIndex !== null) {
+                moveItem.mutate({ placeId: draggedStop.place.id, dayIndex: targetDayIndex });
+                trackEvent("itinerary_drag_move");
+              }
             }}
             className={dragOverDayIndex === day.dayIndex ? "outline outline-2 outline-accent" : undefined}
           >

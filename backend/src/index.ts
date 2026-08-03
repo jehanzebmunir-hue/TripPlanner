@@ -3,6 +3,7 @@ import cors from "cors";
 import express from "express";
 import rateLimit from "express-rate-limit";
 import helmet from "helmet";
+import analyticsRoutes from "./routes/analytics.routes";
 import authRoutes from "./routes/auth.routes";
 import citiesRoutes from "./routes/cities.routes";
 import exchangeRateRoutes from "./routes/exchangeRate.routes";
@@ -31,6 +32,7 @@ app.use("/api/ingest", ingestRoutes);
 app.use("/api/recommend-destination", recommendRoutes);
 app.use("/api/city-health", healthRoutes);
 app.use("/api/exchange-rate", exchangeRateRoutes);
+app.use("/api/events", analyticsRoutes);
 
 app.use(errorHandler as express.ErrorRequestHandler);
 

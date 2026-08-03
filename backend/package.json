@@ -13,7 +13,8 @@
     "ingest:all": "ts-node src/scripts/ingestAll.ts",
     "test": "vitest run",
     "check:collisions": "ts-node src/scripts/checkCollisions.ts",
-    "sweep:stale-trips": "ts-node src/scripts/sweepStaleTrips.ts"
+    "sweep:stale-trips": "ts-node src/scripts/sweepStaleTrips.ts",
+    "analytics:summary": "ts-node src/scripts/analyticsSummary.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"

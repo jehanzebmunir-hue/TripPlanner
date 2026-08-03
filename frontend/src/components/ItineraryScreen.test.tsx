@@ -28,6 +28,9 @@ vi.mock("../ics", async () => {
   return { buildIcs: actual.buildIcs, downloadIcs: (...args: unknown[]) => downloadIcs(...args) };
 });
 
+const trackEvent = vi.fn();
+vi.mock("../analytics", () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
+
 const CITIES = [
   { slug: "tokyo", name: "Tokyo, Japan", country: "JP", currency: "JPY", timezone: "Asia/Tokyo" },
   { slug: "la", name: "Los Angeles, CA", country: "US", currency: "USD", timezone: "America/Los_Angeles" },
@@ -61,6 +64,7 @@ describe("ItineraryScreen", () => {
   beforeEach(() => {
     moveItem.mockReset();
     downloadIcs.mockReset();
+    trackEvent.mockReset();
   });
 
   it("shows an empty-state message when there are no days yet", async () => {
@@ -183,6 +187,7 @@ describe("ItineraryScreen", () => {
     // Day 2 of this range is 2026-08-01 -- the real date Senso-ji's own
     // (leg-less, primary-trip) day options resolve that target date to.
     await waitFor(() => expect(moveItem).toHaveBeenCalledWith("trip1", "p1", 2));
+    expect(trackEvent).toHaveBeenCalledWith("itinerary_drag_move");
   });
 
   it("does not move a stop when dropped onto a day that isn't a real option for its own leg", async () => {
@@ -242,6 +247,7 @@ describe("ItineraryScreen", () => {
     expect(filename).toBe("tokyo-japan.ics");
     expect(content).toContain("SUMMARY:Senso-ji");
     expect(content).toContain("DTSTART;VALUE=DATE:20260731");
+    expect(trackEvent).toHaveBeenCalledWith("itinerary_exported");
   });
 
   it("disables Export when no day in the itinerary has a real date", async () => {

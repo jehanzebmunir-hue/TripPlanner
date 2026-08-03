@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { trackEvent } from "../analytics";
 import { HOME_CURRENCIES } from "../homeCurrencies";
 import { useUpdateTrip } from "../hooks";
 import { Trip } from "../types";
@@ -92,7 +93,12 @@ export function EditTripPanel({ trip }: Props) {
           endDate: legDrafts[l.id]?.endDate || null,
         })),
       },
-      { onSuccess: () => setOpen(false) }
+      {
+        onSuccess: () => {
+          setOpen(false);
+          trackEvent("trip_edited");
+        },
+      }
     );
   }
 

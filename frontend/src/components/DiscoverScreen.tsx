@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { trackEvent } from "../analytics";
 import { CATEGORIES } from "../categories";
 import { haversineKm } from "../geo";
 import {
@@ -36,7 +37,11 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
   const categoryLabel = (slug: string) =>
     t(`categories.${slug}`, CATEGORIES.find((c) => c.slug === slug)?.label ?? slug);
   const [query, setQuery] = useState("");
-  const [showMap, setShowMap] = useState(true);
+  // Collapsed by default -- an always-open map meant a real, unconditional
+  // Leaflet + tile-load cost on every visit to this screen, whether or not
+  // anyone actually wanted it (see the itinerary screen's per-day version
+  // of this same issue).
+  const [showMap, setShowMap] = useState(false);
   const [sortBy, setSortBy] = useState<SortBy>("default");
   // Which of this trip's cities Discover is currently browsing -- defaults
   // to the trip's primary city. Adding an item while browsing a leg's city
@@ -86,6 +91,7 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
     if (!lastRemoved) return;
     addItem.mutate(lastRemoved.placeId);
     setLastRemoved(null);
+    trackEvent("item_undo");
   }
 
   if (isLoading) {
@@ -195,7 +201,11 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
         />
         <select
           value={sortBy}
-          onChange={(e) => setSortBy(e.target.value as SortBy)}
+          onChange={(e) => {
+            const value = e.target.value as SortBy;
+            setSortBy(value);
+            trackEvent("sort_changed", value);
+          }}
           aria-label={t("discover.sortLabel")}
           className="border border-line bg-paper-raised px-2 py-2 text-sm"
         >
@@ -218,7 +228,10 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
         <div>
           <button
             type="button"
-            onClick={() => setShowMap((v) => !v)}
+            onClick={() => {
+              setShowMap((v) => !v);
+              trackEvent("map_toggled", "discover");
+            }}
             className="mb-2 font-mono text-[11px] uppercase tracking-wide text-ink-faint underline"
           >
             {showMap ? t("map.hide") : t("map.show")}
