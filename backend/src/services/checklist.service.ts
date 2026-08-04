@@ -2,7 +2,7 @@ import { prisma } from "../lib/prisma";
 import { getWeatherSummary } from "../lib/weather";
 import { deriveWeatherPackingTypes, PackingType } from "../lib/packingSuggestions";
 import { findAnyCity } from "./cityResolution.service";
-import { touchTrip } from "./trips.service";
+import { assertCanEdit, Requester, touchTrip } from "./trips.service";
 
 export interface PackingSection {
   // null when there's no real weather data to show at all -- no dates set on
@@ -93,7 +93,15 @@ export async function getChecklist(tripId: string) {
   };
 }
 
-export async function toggleChecklistItem(tripId: string, itemKey: string, checked: boolean) {
+// Previously the one write endpoint in this app with no permission check at
+// all -- every other trip mutation requires the real edit-token or account
+// ownership; this used to skip that entirely, so anyone who knew or guessed
+// a tripId could toggle its checklist items with no edit link needed. Same
+// assertCanEdit check every other mutation uses, now enforced here too.
+export async function toggleChecklistItem(tripId: string, itemKey: string, checked: boolean, requester: Requester = {}) {
+  const trip = await prisma.trip.findUniqueOrThrow({ where: { id: tripId }, select: { userId: true, editToken: true } });
+  assertCanEdit(trip, requester);
+
   const check = await prisma.checklistCheck.upsert({
     where: { tripId_itemKey: { tripId, itemKey } },
     create: { tripId, itemKey, checked },

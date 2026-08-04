@@ -37,13 +37,15 @@ interface CreateTripInput {
 // whoever holds the real edit-token link -- independent of accounts, so an
 // anonymous trip's creator (or anyone they share the edit link with) can
 // still edit it. The plain /trip/:id view link never grants this on its
-// own; see getTrip, which deliberately never returns editToken.
-interface Requester {
+// own; see getTrip, which deliberately never returns editToken. Exported so
+// every trip-scoped write (checklist toggles included, not just trip/item
+// mutations defined in this file) shares the exact same permission check.
+export interface Requester {
   userId?: string;
   editToken?: string;
 }
 
-function assertCanEdit(trip: { userId: string | null; editToken: string }, requester: Requester): void {
+export function assertCanEdit(trip: { userId: string | null; editToken: string }, requester: Requester): void {
   const isOwner = !!trip.userId && trip.userId === requester.userId;
   const hasEditToken = !!requester.editToken && requester.editToken === trip.editToken;
   if (!isOwner && !hasEditToken) {

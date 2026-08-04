@@ -17,7 +17,14 @@ vi.mock("../lib/prisma", () => ({
 }));
 
 const touchTrip = vi.fn().mockResolvedValue(undefined);
-vi.mock("./trips.service", () => ({ touchTrip: (...a: unknown[]) => touchTrip(...a) }));
+vi.mock("./trips.service", async (importOriginal) => {
+  // assertCanEdit is real, not mocked -- it's pure and already covered in
+  // trips.service.test.ts, and using the real implementation here means
+  // these tests verify the actual permission behavior end-to-end rather
+  // than just "was it called."
+  const actual = await importOriginal<typeof import("./trips.service")>();
+  return { assertCanEdit: actual.assertCanEdit, touchTrip: (...a: unknown[]) => touchTrip(...a) };
+});
 
 const findAnyCity = vi.fn();
 vi.mock("./cityResolution.service", () => ({ findAnyCity: (...a: unknown[]) => findAnyCity(...a) }));
@@ -130,6 +137,7 @@ describe("getChecklist", () => {
 
 describe("toggleChecklistItem", () => {
   beforeEach(() => {
+    findUniqueOrThrow.mockReset().mockResolvedValue({ userId: null, editToken: "real-edit-token" });
     checkUpsert.mockReset().mockResolvedValue({ tripId: "trip1", itemKey: "weather-rain", checked: true });
     touchTrip.mockClear();
   });
@@ -137,7 +145,7 @@ describe("toggleChecklistItem", () => {
   it("upserts the check and touches the trip so retention/staleness tracking sees the real activity", async () => {
     const { toggleChecklistItem } = await import("./checklist.service");
 
-    await toggleChecklistItem("trip1", "weather-rain", true);
+    await toggleChecklistItem("trip1", "weather-rain", true, { editToken: "real-edit-token" });
 
     expect(checkUpsert).toHaveBeenCalledWith({
       where: { tripId_itemKey: { tripId: "trip1", itemKey: "weather-rain" } },
@@ -145,5 +153,22 @@ describe("toggleChecklistItem", () => {
       update: { checked: true },
     });
     expect(touchTrip).toHaveBeenCalledWith("trip1");
+  });
+
+  it("rejects without the real edit token or ownership -- previously this endpoint had no permission check at all", async () => {
+    const { toggleChecklistItem } = await import("./checklist.service");
+
+    await expect(toggleChecklistItem("trip1", "weather-rain", true, {})).rejects.toMatchObject({ status: 403 });
+    expect(checkUpsert).not.toHaveBeenCalled();
+    expect(touchTrip).not.toHaveBeenCalled();
+  });
+
+  it("allows the account owner to toggle without an edit token", async () => {
+    findUniqueOrThrow.mockResolvedValue({ userId: "owner-1", editToken: "real-edit-token" });
+    const { toggleChecklistItem } = await import("./checklist.service");
+
+    await toggleChecklistItem("trip1", "weather-rain", true, { userId: "owner-1" });
+
+    expect(checkUpsert).toHaveBeenCalled();
   });
 });

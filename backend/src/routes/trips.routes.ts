@@ -102,9 +102,14 @@ router.get("/:id/checklist", async (req, res, next) => {
   }
 });
 
-router.post("/:id/checklist/:itemKey/toggle", async (req, res, next) => {
+router.post("/:id/checklist/:itemKey/toggle", optionalAuth, attachEditToken, async (req: AuthedRequest, res, next) => {
   try {
-    res.json(await toggleChecklistItem(req.params.id, req.params.itemKey, Boolean(req.body.checked)));
+    res.json(
+      await toggleChecklistItem(req.params.id, req.params.itemKey, Boolean(req.body.checked), {
+        userId: req.userId,
+        editToken: req.editToken,
+      })
+    );
   } catch (err) {
     next(err);
   }

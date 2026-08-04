@@ -3,6 +3,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 const fetchWithRetry = vi.fn();
 vi.mock("../lib/httpRetry", () => ({ fetchWithRetry: (...a: unknown[]) => fetchWithRetry(...a) }));
 
+const withinDailyBudget = vi.fn();
+vi.mock("../lib/rateLimiter", () => ({ withinDailyBudget: (...a: unknown[]) => withinDailyBudget(...a) }));
+
 const CITY = { slug: "nyc", name: "New York, NY", country: "US", lat: 40.7128, lng: -74.006, ticketmasterMarket: "New York" };
 
 function response(events: unknown[]): Response {
@@ -14,6 +17,7 @@ describe("ticketmasterAdapter", () => {
 
   beforeEach(() => {
     fetchWithRetry.mockReset();
+    withinDailyBudget.mockReset().mockResolvedValue(true);
     process.env.TICKETMASTER_API_KEY = "test-key";
   });
 
@@ -49,5 +53,28 @@ describe("ticketmasterAdapter", () => {
 
     expect(records).toBeNull();
     expect(fetchWithRetry).not.toHaveBeenCalled();
+    expect(withinDailyBudget).not.toHaveBeenCalled();
+  });
+
+  it("checks the real daily budget before calling the API, and skips once exhausted", async () => {
+    withinDailyBudget.mockResolvedValue(false);
+    const { ticketmasterAdapter } = await import("./ticketmaster");
+
+    const records = await ticketmasterAdapter.run(CITY);
+
+    expect(records).toEqual([]);
+    expect(withinDailyBudget).toHaveBeenCalledWith("ticketmaster", expect.any(Number));
+    expect(fetchWithRetry).not.toHaveBeenCalled();
+  });
+
+  it("respects TICKETMASTER_MAX_CALLS_PER_DAY when set", async () => {
+    process.env.TICKETMASTER_MAX_CALLS_PER_DAY = "10";
+    withinDailyBudget.mockResolvedValue(false);
+    const { ticketmasterAdapter } = await import("./ticketmaster");
+
+    await ticketmasterAdapter.run(CITY);
+
+    expect(withinDailyBudget).toHaveBeenCalledWith("ticketmaster", 10);
+    delete process.env.TICKETMASTER_MAX_CALLS_PER_DAY;
   });
 });

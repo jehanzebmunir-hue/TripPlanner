@@ -1,5 +1,19 @@
 import { fetchWithRetry } from "../lib/httpRetry";
+import { withinDailyBudget } from "../lib/rateLimiter";
 import { CityConfig, NormalizedRecord, SourceAdapter } from "../types";
+
+// Ticketmaster's real, confirmed quota (their own developer FAQ, not a
+// third-party summary): 2 requests/second and 5,000/day. Unlike
+// google-places this isn't a spend guard -- Ticketmaster is free -- it's an
+// operational one: this adapter runs for all 159 cities (DEFAULT_ADAPTERS),
+// demand-driven, so real volume tracks actual traffic rather than a fixed
+// schedule. Previously had no proactive guard at all, only reactive
+// retry-on-429 (lib/httpRetry.ts) -- real margin exists under normal usage,
+// but nothing stopped a real traffic spike from silently exceeding the
+// day's free allowance and risking the key getting rate-limited. 4,500
+// leaves deliberate headroom under the real 5,000 cap rather than cutting
+// it close.
+const DEFAULT_MAX_CALLS_PER_DAY = 4500;
 
 function categoryFor(segment: string | undefined): string {
   const s = (segment ?? "").toLowerCase();
@@ -36,6 +50,13 @@ export const ticketmasterAdapter: SourceAdapter = {
     if (!apiKey) {
       console.warn("[ticketmaster] TICKETMASTER_API_KEY not set — skipping");
       return null;
+    }
+
+    const maxCallsPerDay = Number(process.env.TICKETMASTER_MAX_CALLS_PER_DAY ?? DEFAULT_MAX_CALLS_PER_DAY);
+    const allowed = await withinDailyBudget("ticketmaster", maxCallsPerDay);
+    if (!allowed) {
+      console.warn(`[ticketmaster] daily call budget (${maxCallsPerDay}) already reached — skipping until tomorrow`);
+      return [];
     }
 
     const params = new URLSearchParams({
