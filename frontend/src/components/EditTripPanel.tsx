@@ -92,6 +92,10 @@ export function EditTripPanel({ trip }: Props) {
           startDate: legDrafts[l.id]?.startDate || null,
           endDate: legDrafts[l.id]?.endDate || null,
         })),
+        // Lets the backend reject this save with a real conflict error if
+        // someone else changed the trip since this panel's draft was last
+        // synced from it, instead of silently overwriting their edit.
+        expectedUpdatedAt: trip.updatedAt,
       },
       {
         onSuccess: () => {

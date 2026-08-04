@@ -95,6 +95,10 @@ export interface UpdateTripInput {
   endDate?: string | null;
   homeCurrency?: string | null;
   legs?: UpdateLegInput[];
+  // The trip's updatedAt this client last saw -- lets the backend reject a
+  // save with a real conflict error if someone else changed the trip since,
+  // instead of silently overwriting their edit.
+  expectedUpdatedAt?: string;
 }
 
 export const api = {

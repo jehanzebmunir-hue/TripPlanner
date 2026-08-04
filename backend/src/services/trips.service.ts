@@ -8,6 +8,13 @@ class BadRequestError extends Error {
   status = 400;
 }
 
+// Thrown by updateTrip's real optimistic-concurrency check -- two people
+// editing the same trip's dates/currency near-simultaneously previously hit
+// silent last-write-wins with no warning at all.
+class ConflictError extends Error {
+  status = 409;
+}
+
 interface LegInput {
   city: string;
   destination: string;
@@ -197,6 +204,11 @@ interface UpdateTripInput {
   endDate?: string | null;
   homeCurrency?: string | null;
   legs?: UpdateLegInput[];
+  // The trip's updatedAt the client last saw, from GET /trips/:id -- when
+  // provided and it no longer matches the trip's real current value,
+  // someone else changed this trip since the client's copy was fetched.
+  // Omitted entirely: no check, same as before this field existed.
+  expectedUpdatedAt?: string;
 }
 
 // Deliberately narrow: dates and home currency only, on the trip and on
@@ -209,6 +221,10 @@ interface UpdateTripInput {
 export async function updateTrip(tripId: string, input: UpdateTripInput, requester: Requester = {}) {
   const trip = await prisma.trip.findUniqueOrThrow({ where: { id: tripId }, include: { legs: true, items: true } });
   assertCanEdit(trip, requester);
+
+  if (input.expectedUpdatedAt !== undefined && input.expectedUpdatedAt !== trip.updatedAt.toISOString()) {
+    throw new ConflictError("This trip was changed elsewhere — refresh and try again before saving.");
+  }
 
   const parseDate = (v: string | null | undefined) => (v ? new Date(v) : null);
 

@@ -52,6 +52,14 @@ export function useTrip(tripId?: string) {
     queryKey: ["trip", tripId],
     queryFn: () => api.getTrip(tripId!),
     enabled: !!tripId,
+    // Near-live collaborative-editing detection: App.tsx's staleness banner
+    // already compares trip.updatedAt on every fetch, but previously the
+    // only thing that ever triggered a fetch was React Query's default
+    // refetch-on-window-focus -- a change from someone else went unnoticed
+    // until the tab lost and regained focus. React Query already pauses
+    // interval refetching for an unfocused/backgrounded tab by default, so
+    // this costs nothing when idle.
+    refetchInterval: 10_000,
   });
 }
 
@@ -94,6 +102,11 @@ export function useUpdateTrip(tripId?: string) {
   return useMutation({
     mutationFn: (input: UpdateTripInput) => api.updateTrip(tripId!, input),
     onSuccess: invalidate,
+    // A conflict error (someone else changed the trip first) means the
+    // client's copy is now stale -- pull in the real current trip right
+    // away rather than leaving the panel's draft fields showing what was
+    // just rejected.
+    onError: invalidate,
   });
 }
 

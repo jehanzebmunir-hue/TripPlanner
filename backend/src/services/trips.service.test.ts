@@ -292,6 +292,33 @@ describe("updateTrip", () => {
     });
   });
 
+  it("succeeds when expectedUpdatedAt matches the trip's real current value", async () => {
+    tripFindUniqueOrThrow.mockResolvedValue(anonymousTrip({ updatedAt: new Date("2026-08-01T00:00:00.000Z") }));
+    const { updateTrip } = await import("./trips.service");
+
+    await updateTrip(
+      "t1",
+      { homeCurrency: "CAD", expectedUpdatedAt: "2026-08-01T00:00:00.000Z" },
+      { editToken: "real-edit-token" }
+    );
+
+    expect(tripUpdate).toHaveBeenCalled();
+  });
+
+  it("rejects with a real conflict error when expectedUpdatedAt doesn't match -- someone else changed this trip first", async () => {
+    tripFindUniqueOrThrow.mockResolvedValue(anonymousTrip({ updatedAt: new Date("2026-08-01T00:00:00.000Z") }));
+    const { updateTrip } = await import("./trips.service");
+
+    await expect(
+      updateTrip(
+        "t1",
+        { homeCurrency: "CAD", expectedUpdatedAt: "2026-07-31T00:00:00.000Z" }, // stale -- trip changed since this client last fetched it
+        { editToken: "real-edit-token" }
+      )
+    ).rejects.toMatchObject({ status: 409 });
+    expect(tripUpdate).not.toHaveBeenCalled();
+  });
+
   it("rejects an unknown leg id rather than silently ignoring it", async () => {
     tripFindUniqueOrThrow.mockResolvedValue(anonymousTrip({ legs: [] }));
     const { updateTrip } = await import("./trips.service");

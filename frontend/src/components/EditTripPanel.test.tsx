@@ -82,6 +82,35 @@ describe("EditTripPanel", () => {
     expect(updateTripApi).not.toHaveBeenCalled();
   });
 
+  it("sends the trip's real current updatedAt so the backend can detect a conflicting edit", async () => {
+    updateTripApi.mockResolvedValue({ ...TRIP, homeCurrency: "CAD" });
+    const user = userEvent.setup();
+    renderWithClient(<EditTripPanel trip={TRIP} />);
+
+    await user.click(screen.getByText(/edit trip dates/i));
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    await waitFor(() => {
+      expect(updateTripApi).toHaveBeenCalledWith(
+        "trip1",
+        expect.objectContaining({ expectedUpdatedAt: "2026-08-01T00:00:00.000Z" })
+      );
+    });
+  });
+
+  it("shows the real conflict message when someone else changed the trip first, rather than a generic error", async () => {
+    updateTripApi.mockRejectedValue(new Error("This trip was changed elsewhere — refresh and try again before saving."));
+    const user = userEvent.setup();
+    renderWithClient(<EditTripPanel trip={TRIP} />);
+
+    await user.click(screen.getByText(/edit trip dates/i));
+    await user.click(screen.getByRole("button", { name: /save changes/i }));
+
+    await waitFor(() => {
+      expect(screen.getByText(/changed elsewhere/i)).toBeInTheDocument();
+    });
+  });
+
   it("shows a real backend error rather than pretending the save succeeded", async () => {
     updateTripApi.mockRejectedValue(new Error("2 item(s) would fall outside the new date range — move or remove them first"));
     const user = userEvent.setup();
