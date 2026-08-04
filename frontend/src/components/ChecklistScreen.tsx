@@ -1,14 +1,51 @@
 import { useState } from "react";
+import { TFunction } from "i18next";
 import { useTranslation } from "react-i18next";
 import { api } from "../api";
 import { useChecklist, useToggleChecklistItem } from "../hooks";
-import { ChecklistEntry } from "../types";
+import { ChecklistEntry, WeatherPackingSection, WeatherPackingType } from "../types";
 import { Skeleton } from "./Skeleton";
 
 // Compared against the backend's own (English-only -- see i18n scope note
 // in README) checklist template text to find this one special item, not
 // user-facing itself.
 const OFFLINE_SAVE_LABEL = "Save this itinerary for offline access";
+
+// Real, deterministic C->F conversion (not a guess, not an API call) -- same
+// "show native plus a converted estimate" pattern already used for price.
+function celsiusToFahrenheit(c: number): number {
+  return Math.round((c * 9) / 5 + 32);
+}
+
+const PACKING_LABEL_KEYS: Record<WeatherPackingType, string> = {
+  rain: "checklist.packingRain",
+  "warm-layer": "checklist.packingWarmLayer",
+  "sun-protection": "checklist.packingSunProtection",
+};
+
+// Backend sends raw numbers and a source flag, not pre-rendered text -- built
+// into real ChecklistEntry objects here so packing suggestions get the same
+// real i18n coverage as the rest of this app's UI chrome, rather than the
+// English-only precedent set by the (out-of-scope, backend-authored)
+// weeksOut/dayOf template items.
+function buildPackingEntries(t: TFunction, packing: WeatherPackingSection): ChecklistEntry[] {
+  if (!packing.source) return [];
+  const source = t(packing.source === "forecast" ? "checklist.packingSourceForecast" : "checklist.packingSourceHistorical");
+
+  return packing.items.map((item) => {
+    let hint: string;
+    if (item.type === "rain") {
+      hint = t("checklist.packingRainHint", { source, percent: Math.round(packing.rainChancePercent ?? 0) });
+    } else if (item.type === "warm-layer") {
+      const lowC = Math.round(packing.avgLowC ?? 0);
+      hint = t("checklist.packingWarmLayerHint", { source, lowC, lowF: celsiusToFahrenheit(lowC) });
+    } else {
+      const highC = Math.round(packing.avgHighC ?? 0);
+      hint = t("checklist.packingSunProtectionHint", { source, highC, highF: celsiusToFahrenheit(highC) });
+    }
+    return { id: item.id, label: t(PACKING_LABEL_KEYS[item.type]), hint, checked: item.checked };
+  });
+}
 
 export function ChecklistScreen({ tripId, city }: { tripId: string; city: string }) {
   const { t } = useTranslation();
@@ -33,8 +70,14 @@ export function ChecklistScreen({ tripId, city }: { tripId: string; city: string
     );
   }
 
+  const packingItems = buildPackingEntries(t, data.packing);
   const groups: { title: string; items: ChecklistEntry[] }[] = [
     { title: t("checklist.fromItinerary"), items: data.fromItinerary },
+    // Omitted entirely (not shown with a "nothing here" empty state) when
+    // there's no real weather data for this trip yet -- no dates set, or
+    // the destination/live lookup didn't resolve. A real, populated section
+    // or nothing, never an empty placeholder for something that isn't ready.
+    ...(packingItems.length > 0 ? [{ title: t("checklist.packingTitle"), items: packingItems }] : []),
     { title: t("checklist.weeksOut"), items: data.weeksOut },
     { title: t("checklist.dayOf"), items: data.dayOf },
   ];

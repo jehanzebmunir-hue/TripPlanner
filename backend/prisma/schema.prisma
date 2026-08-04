@@ -95,6 +95,28 @@ model ExchangeRateCache {
   @@id([fromCurrency, toCurrency, date])
 }
 
+// Real weather data (lib/weather.ts) for a trip's destination + date range --
+// Open-Meteo, free, no key, verified live before building against it. source
+// distinguishes a real forecast (trip within its 16-day window) from a
+// historical average (older years' real recorded weather for the same
+// calendar dates, for a trip too far out to forecast) -- never a guess
+// either way. Cached per city+date-range+source rather than fetched on every
+// checklist load: forecast entries go stale in hours (a forecast made 10
+// days out isn't final), historical entries barely change at all, so each
+// checks staleness against its own real refresh window (see weather.ts).
+model WeatherCache {
+  citySlug          String
+  startDate         String // YYYY-MM-DD
+  endDate           String // YYYY-MM-DD
+  source            String // "forecast" | "historical-average"
+  avgHighC          Float
+  avgLowC           Float
+  rainChancePercent Float
+  fetchedAt         DateTime @default(now())
+
+  @@id([citySlug, startDate, endDate, source])
+}
+
 // A place resolved on demand via OpenStreetMap's Nominatim geocoder when a
 // requested city isn't in the curated config/cities.ts registry -- cached
 // here permanently so the same real place is only ever geocoded once, not

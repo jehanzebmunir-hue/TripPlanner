@@ -1,7 +1,7 @@
 import { find as findTimezone } from "geo-tz";
 import { prisma } from "../lib/prisma";
 import { geocodePlace } from "../lib/nominatim";
-import { CITIES } from "../config/cities";
+import { CITIES, getCity } from "../config/cities";
 import { getCurrency, getTimezone } from "../config/localization";
 import { CityConfig } from "../types";
 
@@ -150,6 +150,14 @@ export async function resolveCity(slug: string): Promise<CityConfig | undefined>
   const row = await prisma.resolvedCity.findUnique({ where: { slug } });
   if (!row) return undefined;
   return { slug: row.slug, name: row.name, country: row.country, lat: row.lat, lng: row.lng, resolved: true };
+}
+
+// The curated registry is checked first (fast, no DB round-trip) -- a slug
+// only ever falls through to resolveCity's DB lookup when it isn't there.
+// Shared by anything that needs a city's real lat/lng regardless of whether
+// it's curated or resolved-on-demand (ingestion, weather).
+export async function findAnyCity(slug: string): Promise<CityConfig | undefined> {
+  return getCity(slug) ?? (await resolveCity(slug));
 }
 
 /** GET /api/cities -- the curated registry plus every city resolved so far. */

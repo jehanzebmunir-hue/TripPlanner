@@ -82,10 +82,26 @@ export interface ChecklistEntry {
   checked: boolean;
 }
 
+export type WeatherPackingType = "rain" | "warm-layer" | "sun-protection";
+
+// Raw, translatable data from the backend -- deliberately not pre-rendered
+// label/hint strings like the other sections (weeksOut/dayOf are backend-
+// authored, English-only template content, out of this app's i18n scope by
+// design; this is new code, so it gets real translated labels built on the
+// frontend from these raw values instead of repeating that gap).
+export interface WeatherPackingSection {
+  source: "forecast" | "historical-average" | null;
+  avgHighC: number | null;
+  avgLowC: number | null;
+  rainChancePercent: number | null;
+  items: { id: string; type: WeatherPackingType; checked: boolean }[];
+}
+
 export interface ChecklistResponse {
   fromItinerary: ChecklistEntry[];
   weeksOut: ChecklistEntry[];
   dayOf: ChecklistEntry[];
+  packing: WeatherPackingSection;
 }
 
 export interface TransitEstimate {
