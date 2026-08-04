@@ -101,6 +101,7 @@ export const es: TranslationResource = {
     sortDistance: "Orden: más cercanos al centro",
     noFilterMatches: "Nada coincide con tus filtros actuales — prueba una búsqueda más amplia o menos intereses.",
     noneIngested: "Nada registrado para estas categorías todavía — ejecuta el script de ingesta.",
+    loadMore: "Ver más ({{remaining}} más)",
   },
   placeCard: {
     stale: "Desactualizado · hace {{days}}d",

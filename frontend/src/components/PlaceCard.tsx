@@ -23,19 +23,26 @@ interface Props {
   onConfirm: (vote: "valid" | "invalid") => void;
 }
 
+// Keyed off this app's own active language (i18n.language), not the
+// runtime's default locale -- Intl's default-locale resolution is
+// environment-dependent (verified live: the exact same code rendered "$30"
+// on Ubuntu CI but a different string locally on Windows), so formatting
+// still has to be pinned to something deterministic. The app's own language
+// choice is exactly that: controlled by this app, not the visitor's OS, and
+// unlike a hardcoded "en-US" it actually renders Spanish-convention number
+// formatting for a Spanish-language session. "es" stays bare (not es-ES or
+// es-MX) since the curated registry has real weight across Spain, Mexico,
+// and much of Latin America -- no single country's convention is more
+// correct here than another.
+const LOCALE_BY_LANGUAGE: Record<string, string> = { en: "en-US", es: "es" };
+
 // Renders nothing when priceAmount is null/undefined — an unverified price
 // looks identical to today's UI, on purpose, rather than showing a
 // confusing "price unknown" placeholder for what's still most of the data.
-function formatPrice(amount: number | null | undefined, currency: string, freeLabel: string): string | null {
+function formatPrice(amount: number | null | undefined, currency: string, freeLabel: string, locale: string): string | null {
   if (amount == null) return null;
   if (amount === 0) return freeLabel;
-  // A fixed locale, not the runtime's default (`undefined`) -- Intl's
-  // default-locale resolution is environment-dependent (verified live: the
-  // exact same code rendered "$30" on Ubuntu CI but a different string
-  // locally on Windows), which would have made price formatting silently
-  // inconsistent between this app's actual production environment and
-  // whatever gets tested locally, not just a test-flakiness issue.
-  return new Intl.NumberFormat("en-US", { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
+  return new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
 }
 
 export function PlaceCard({
@@ -48,7 +55,7 @@ export function PlaceCard({
   onToggleAdd,
   onConfirm,
 }: Props) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   // A real photo can still 404 (a Commons file renamed/deleted since this
   // was ingested) -- hiding it on error is more honest than a visibly
   // broken image icon, and costs nothing since the card works fine
@@ -59,13 +66,14 @@ export function PlaceCard({
       ? t("placeCard.stale", { days: place.daysSince })
       : t("placeCard.verified", { days: place.daysSince });
   const freeLabel = t("placeCard.free");
-  const price = formatPrice(place.priceAmount, currency, freeLabel);
+  const locale = LOCALE_BY_LANGUAGE[i18n.language] ?? "en-US";
+  const price = formatPrice(place.priceAmount, currency, freeLabel, locale);
   // Only a real, positive priceAmount converts -- "Free" and unverified
   // prices have nothing to convert, and a 0 or negative rate would only
   // ever come from a broken provider response, never a real one.
   const converted =
     place.priceAmount && place.priceAmount > 0 && homeCurrency && exchangeRate
-      ? formatPrice(place.priceAmount * exchangeRate, homeCurrency, freeLabel)
+      ? formatPrice(place.priceAmount * exchangeRate, homeCurrency, freeLabel, locale)
       : null;
 
   return (

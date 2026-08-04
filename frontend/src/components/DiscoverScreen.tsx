@@ -27,6 +27,13 @@ const MapView = lazy(() => import("./MapView").then((m) => ({ default: m.MapView
 // to catch a misclick, short enough not to leave a stale toast around.
 const UNDO_WINDOW_MS = 6000;
 
+// A data-rich city can have well over 200 real ingested places (confirmed
+// live: NYC alone has 221 across sources) -- rendering every matching card
+// at once was a real, unbounded cost, not just a cosmetic wall of choices.
+// 24 is enough to fill a couple of screens before anyone needs to ask for
+// more.
+const PAGE_SIZE = 24;
+
 type SortBy = "default" | "price" | "confidence" | "distance";
 
 interface Props {
@@ -49,6 +56,7 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
   // of this same issue).
   const [showMap, setShowMap] = useState(false);
   const [sortBy, setSortBy] = useState<SortBy>("default");
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
   // Which of this trip's cities Discover is currently browsing -- defaults
   // to the trip's primary city. Adding an item while browsing a leg's city
   // tags it with that leg automatically server-side (the place's own city
@@ -82,6 +90,14 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
     const timer = setTimeout(() => setLastRemoved(null), UNDO_WINDOW_MS);
     return () => clearTimeout(timer);
   }, [lastRemoved]);
+
+  // A page position from a previous filter/sort/city is meaningless once any
+  // of those actually change -- reset to the first page rather than showing
+  // e.g. "cards 25-48 of a totally different filtered set."
+  const interestsKey = interests.join(",");
+  useEffect(() => {
+    setVisibleCount(PAGE_SIZE);
+  }, [activeCity, query, sortBy, interestsKey]);
 
   function handleToggleAdd(place: Place) {
     if (addedIds.has(place.id)) {
@@ -251,7 +267,7 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
       )}
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
-        {sorted.map((p) => (
+        {sorted.slice(0, visibleCount).map((p) => (
           <PlaceCard
             key={p.id}
             place={p}
@@ -265,6 +281,16 @@ export function DiscoverScreen({ city, legs = [], interests, tripId, addedIds, h
           />
         ))}
       </div>
+
+      {sorted.length > visibleCount && (
+        <button
+          type="button"
+          onClick={() => setVisibleCount((v) => v + PAGE_SIZE)}
+          className="w-full border border-dashed border-line py-2.5 text-xs font-semibold text-ink-soft"
+        >
+          {t("discover.loadMore", { remaining: sorted.length - visibleCount })}
+        </button>
+      )}
     </div>
   );
 }

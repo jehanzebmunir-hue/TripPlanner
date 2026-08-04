@@ -2,6 +2,7 @@ import { fireEvent, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { renderWithClient } from "../test/renderWithClient";
+import { setLanguage } from "../i18n";
 import { DiscoverScreen } from "./DiscoverScreen";
 
 const listPlaces = vi.fn();
@@ -97,6 +98,25 @@ describe("DiscoverScreen", () => {
     // undefined-locale version rendered differently on Ubuntu CI than on a
     // local Windows run of the exact same code and same test).
     await waitFor(() => expect(screen.getByText("$30")).toBeInTheDocument());
+  });
+
+  it("formats price using the app's own active language, not a hardcoded locale, once switched to Spanish", async () => {
+    listPlaces.mockResolvedValue([{ ...PLACE, priceAmount: 30 }]);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+    setLanguage("es");
+
+    try {
+      renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
+
+      // Verified directly (Intl.NumberFormat("es", ...).format(30) with
+      // currency USD): Spanish convention puts the amount before the
+      // symbol, "30 US$", not English's "$30" -- a real, visible difference
+      // proving this is driven by i18n.language, not still pinned to "en-US".
+      await waitFor(() => expect(screen.getByText("30 US$")).toBeInTheDocument());
+    } finally {
+      setLanguage("en"); // reset for every other test in the suite, which assumes English
+    }
   });
 
   it("shows a converted estimate alongside the native price when a home currency and a real rate are set", async () => {
@@ -341,5 +361,46 @@ describe("DiscoverScreen", () => {
     await user.selectOptions(screen.getByRole("combobox", { name: "Sort by" }), "confidence");
 
     expect(trackEvent).toHaveBeenCalledWith("sort_changed", "confidence");
+  });
+
+  it("caps the initial render at a real page size and reveals the rest via Load more, rather than rendering everything at once", async () => {
+    const manyPlaces = Array.from({ length: 30 }, (_, i) => ({ ...PLACE, id: `p${i}`, name: `Place ${i}` }));
+    listPlaces.mockResolvedValue(manyPlaces);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
+    await waitFor(() => expect(screen.getByText("Place 0")).toBeInTheDocument());
+
+    expect(screen.getAllByText(/^Place \d+$/)).toHaveLength(24);
+    expect(screen.queryByText("Place 24")).not.toBeInTheDocument();
+    const loadMore = screen.getByRole("button", { name: /load more/i });
+    expect(loadMore).toHaveTextContent("6"); // 30 - 24 remaining
+
+    await user.click(loadMore);
+
+    expect(screen.getAllByText(/^Place \d+$/)).toHaveLength(30);
+    expect(screen.queryByRole("button", { name: /load more/i })).not.toBeInTheDocument();
+  });
+
+  it("resets back to the first page when the search query changes", async () => {
+    const manyPlaces = Array.from({ length: 30 }, (_, i) => ({ ...PLACE, id: `p${i}`, name: `Place ${i}` }));
+    listPlaces.mockResolvedValue(manyPlaces);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+    const user = userEvent.setup();
+
+    renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
+    await waitFor(() => expect(screen.getByText("Place 0")).toBeInTheDocument());
+    await user.click(screen.getByRole("button", { name: /load more/i }));
+    expect(screen.getAllByText(/^Place \d+$/)).toHaveLength(30);
+
+    await user.type(screen.getByRole("searchbox"), "Place 1");
+
+    // Real matches for "Place 1" (Place 1, 10-19) are fewer than a full page,
+    // so no stale "showing 30" carries over from before the search.
+    await waitFor(() => expect(screen.queryByText("Place 0")).not.toBeInTheDocument());
+    expect(screen.queryByRole("button", { name: /load more/i })).not.toBeInTheDocument();
   });
 });

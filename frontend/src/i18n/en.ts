@@ -99,6 +99,7 @@ export const en = {
     sortDistance: "Sort: nearest to city center",
     noFilterMatches: "Nothing matches your current filters — try a broader search or fewer interests.",
     noneIngested: "Nothing ingested for these categories yet — run the ingest script.",
+    loadMore: "Load more ({{remaining}} more)",
   },
   placeCard: {
     stale: "Stale · {{days}}d ago",

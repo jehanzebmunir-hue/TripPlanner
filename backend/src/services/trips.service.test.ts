@@ -9,6 +9,7 @@ const tripItemUpsert = vi.fn();
 const tripItemDelete = vi.fn();
 const tripItemUpdate = vi.fn();
 const tripItemCount = vi.fn();
+const tripItemFindMany = vi.fn();
 const tripItemFindUniqueOrThrow = vi.fn();
 const tripLegUpdate = vi.fn();
 const placeFindUniqueOrThrow = vi.fn();
@@ -27,6 +28,7 @@ vi.mock("../lib/prisma", () => ({
       delete: (...a: unknown[]) => tripItemDelete(...a),
       update: (...a: unknown[]) => tripItemUpdate(...a),
       count: (...a: unknown[]) => tripItemCount(...a),
+      findMany: (...a: unknown[]) => tripItemFindMany(...a),
       findUniqueOrThrow: (...a: unknown[]) => tripItemFindUniqueOrThrow(...a),
     },
     tripLeg: { update: (...a: unknown[]) => tripLegUpdate(...a) },
@@ -59,6 +61,7 @@ describe("addTripItem permission checks", () => {
     tripUpdate.mockReset().mockResolvedValue(undefined);
     tripItemUpsert.mockReset().mockResolvedValue({ id: "item1" });
     tripItemCount.mockReset().mockResolvedValue(0);
+    tripItemFindMany.mockReset().mockResolvedValue([]);
     placeFindUniqueOrThrow.mockReset().mockResolvedValue({ id: "p1", city: "nyc" });
   });
 
@@ -112,6 +115,7 @@ describe("addTripItem leg inference", () => {
     tripUpdate.mockReset().mockResolvedValue(undefined);
     tripItemUpsert.mockReset().mockResolvedValue({ id: "item1" });
     tripItemCount.mockReset().mockResolvedValue(0);
+    tripItemFindMany.mockReset().mockResolvedValue([]);
   });
 
   it("tags a new item with the leg matching the place's own city", async () => {

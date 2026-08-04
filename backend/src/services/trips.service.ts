@@ -1,4 +1,5 @@
 import { prisma } from "../lib/prisma";
+import { chooseDayIndex } from "../lib/dayAssignment";
 
 class ForbiddenError extends Error {
   status = 403;
@@ -141,11 +142,19 @@ export async function addTripItem(tripId: string, placeId: string, requester: Re
   const matchingLeg = trip.legs.find((l) => l.city === place.city);
   const legId = matchingLeg?.id ?? null;
 
-  const existingCount = await prisma.tripItem.count({ where: { tripId, legId } });
+  // Real geographic clustering (lib/dayAssignment.ts), not plain round-robin
+  // by add order -- previously two places on opposite sides of the city
+  // could land on the same day for no reason beyond the order they were
+  // added in, which especially undermined the auto-fill starter itinerary's
+  // whole point (a sensible default, not busywork to manually re-shuffle).
+  const existingItems = await prisma.tripItem.findMany({
+    where: { tripId, legId },
+    select: { dayIndex: true, place: { select: { lat: true, lng: true } } },
+  });
   const relevantStart = matchingLeg?.startDate ?? trip.startDate;
   const relevantEnd = matchingLeg?.endDate ?? trip.endDate;
   const totalDays = tripLengthDays(relevantStart, relevantEnd);
-  const dayIndex = (existingCount % totalDays) + 1;
+  const dayIndex = chooseDayIndex(existingItems, { lat: place.lat, lng: place.lng }, totalDays);
 
   const item = await prisma.tripItem.upsert({
     where: { tripId_placeId: { tripId, placeId } },
