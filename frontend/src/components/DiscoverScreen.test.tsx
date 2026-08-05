@@ -97,6 +97,43 @@ describe("DiscoverScreen", () => {
     expect(await screen.findByText(/confirmed by 2 visitors/i)).toBeInTheDocument();
   });
 
+  it("shows a real event date/time so two same-named cards (different real showtimes) are distinguishable, not identical-looking", async () => {
+    const expiryAt = "2026-08-05T19:30:00.000Z";
+    listPlaces.mockResolvedValue([{ ...PLACE, expiryAt }]);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+    // Computed the same way the component itself formats it, rather than a
+    // hardcoded literal -- the local calendar date/time a UTC instant
+    // renders as is genuinely timezone-dependent (verified: this exact
+    // class of bug already bit this project once, for price-locale
+    // formatting), so the expectation has to be self-consistent regardless
+    // of which real timezone the test happens to run in.
+    const expected = new Intl.DateTimeFormat("en-US", {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    }).format(new Date(expiryAt));
+
+    renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
+
+    expect(await screen.findByText(expected)).toBeInTheDocument();
+  });
+
+  it("shows no event date for a place with no real expiryAt -- most static landmarks", async () => {
+    listPlaces.mockResolvedValue([{ ...PLACE, expiryAt: undefined }]);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+
+    renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
+
+    await screen.findByText("The Met");
+    // No expiryAt on this fixture -- date paragraph shouldn't render at all,
+    // checked against the same real month abbreviations rather than one
+    // specific guessed string.
+    expect(screen.queryByText(/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d/)).not.toBeInTheDocument();
+  });
+
   it("shows 'Free' for a confirmed-free place", async () => {
     listPlaces.mockResolvedValue([{ ...PLACE, priceAmount: 0 }]);
     listCities.mockResolvedValue(CITIES);

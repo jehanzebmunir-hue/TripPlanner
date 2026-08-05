@@ -45,6 +45,19 @@ function formatPrice(amount: number | null | undefined, currency: string, freeLa
   return new Intl.NumberFormat(locale, { style: "currency", currency, maximumFractionDigits: 0 }).format(amount);
 }
 
+// A real event's date/time, shown on its own card -- without this, two
+// genuinely different real showtimes of the same production (a real,
+// correct thing for a ticketing adapter to return) rendered as visually
+// identical cards with no way to tell them apart. expiryAt is only ever set
+// for volatile-tier/event-like places to begin with, so this naturally
+// stays absent for a static landmark's card.
+function formatEventDate(expiryAt: string | null | undefined, locale: string): string | null {
+  if (!expiryAt) return null;
+  const date = new Date(expiryAt);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat(locale, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }).format(date);
+}
+
 export function PlaceCard({
   place,
   added,
@@ -75,6 +88,7 @@ export function PlaceCard({
     place.priceAmount && place.priceAmount > 0 && homeCurrency && exchangeRate
       ? formatPrice(place.priceAmount * exchangeRate, homeCurrency, freeLabel, locale)
       : null;
+  const eventDate = formatEventDate(place.expiryAt, locale);
 
   return (
     <div className="flex flex-col gap-2 border border-line bg-paper-raised p-4 shadow-sm">
@@ -95,6 +109,8 @@ export function PlaceCard({
           {badgeLabel}
         </span>
       </div>
+
+      {eventDate && <p className="font-mono text-[11px] font-semibold text-accent">{eventDate}</p>}
 
       {place.description && <p className="text-[13px] text-ink-soft">{place.description}</p>}
 
