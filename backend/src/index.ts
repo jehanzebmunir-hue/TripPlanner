@@ -12,7 +12,12 @@ import placesRoutes from "./routes/places.routes";
 import recommendRoutes from "./routes/recommend.routes";
 import tripsRoutes from "./routes/trips.routes";
 import { errorHandler } from "./middleware/error.middleware";
+import { initSentry, setupSentryErrorHandler } from "./lib/sentry";
 import { warmPriorityCities } from "./services/ingestion.service";
+
+// Before anything else -- a no-op until SENTRY_DSN is set, same "off by
+// default" pattern as every other optional integration in this app.
+initSentry();
 
 const app = express();
 const PORT = Number(process.env.PORT ?? 3001);
@@ -32,6 +37,7 @@ app.use("/api/city-health", healthRoutes);
 app.use("/api/exchange-rate", exchangeRateRoutes);
 app.use("/api/events", analyticsRoutes);
 
+setupSentryErrorHandler(app);
 app.use(errorHandler as express.ErrorRequestHandler);
 
 app.listen(PORT, () => {

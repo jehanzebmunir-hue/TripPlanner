@@ -12,6 +12,7 @@ function place(overrides: Partial<Place> & Pick<Place, "id" | "name">): Place {
     confidence: 90,
     band: "verified",
     daysSince: 1,
+    recentConfirmations: 0,
     ...overrides,
   };
 }

@@ -125,3 +125,97 @@ describe("trip-changed-elsewhere banner", () => {
     expect(screen.queryByText(/updated elsewhere/i)).not.toBeInTheDocument();
   });
 });
+
+describe("share / copy link", () => {
+  function trip() {
+    return {
+      id: "trip1",
+      city: "tokyo",
+      destination: "Tokyo, Japan",
+      startDate: null,
+      endDate: null,
+      interests: [],
+      legs: [],
+      items: [],
+      updatedAt: "2026-08-01T00:00:00.000Z",
+    };
+  }
+
+  const originalShare = navigator.share;
+  const originalClipboard = navigator.clipboard;
+
+  beforeEach(() => {
+    localStorage.setItem("tripId", "trip1");
+    getTrip.mockResolvedValue(trip());
+  });
+
+  afterEach(() => {
+    localStorage.removeItem("tripId");
+    Object.defineProperty(navigator, "share", { value: originalShare, configurable: true });
+    Object.defineProperty(navigator, "clipboard", { value: originalClipboard, configurable: true });
+  });
+
+  // @testing-library/user-event's own setup() installs its own real
+  // clipboard stub -- defining ours after setup(), not in a shared
+  // beforeEach, so it doesn't get silently overwritten by that.
+  function stubClipboard() {
+    const writeText = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    return writeText;
+  }
+
+  it("falls back to a real clipboard copy when the Web Share API isn't available", async () => {
+    Object.defineProperty(navigator, "share", { value: undefined, configurable: true });
+    const user = userEvent.setup();
+    const writeText = stubClipboard();
+    renderApp();
+    await screen.findByText("Tokyo, Japan");
+
+    await user.click(screen.getByRole("button", { name: /copy link/i }));
+
+    expect(writeText).toHaveBeenCalledWith(window.location.href);
+    expect(await screen.findByText(/copied/i)).toBeInTheDocument();
+  });
+
+  it("uses the native share sheet with real trip context when it's available, instead of the clipboard", async () => {
+    const share = vi.fn().mockResolvedValue(undefined);
+    Object.defineProperty(navigator, "share", { value: share, configurable: true });
+    const user = userEvent.setup();
+    const writeText = stubClipboard();
+    renderApp();
+    await screen.findByText("Tokyo, Japan");
+
+    await user.click(screen.getByRole("button", { name: /^share$/i }));
+
+    expect(share).toHaveBeenCalledWith(
+      expect.objectContaining({ text: "Tokyo, Japan", url: window.location.href })
+    );
+    expect(writeText).not.toHaveBeenCalled();
+  });
+
+  it("falls back to the clipboard when a real share attempt fails for a reason other than the user canceling", async () => {
+    const share = vi.fn().mockRejectedValue(new Error("real failure, not a cancel"));
+    Object.defineProperty(navigator, "share", { value: share, configurable: true });
+    const user = userEvent.setup();
+    const writeText = stubClipboard();
+    renderApp();
+    await screen.findByText("Tokyo, Japan");
+
+    await user.click(screen.getByRole("button", { name: /^share$/i }));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(window.location.href));
+  });
+
+  it("does nothing extra when the user just cancels the native share sheet -- not a real failure", async () => {
+    const share = vi.fn().mockRejectedValue(Object.assign(new Error("canceled"), { name: "AbortError" }));
+    Object.defineProperty(navigator, "share", { value: share, configurable: true });
+    const user = userEvent.setup();
+    const writeText = stubClipboard();
+    renderApp();
+    await screen.findByText("Tokyo, Japan");
+
+    await user.click(screen.getByRole("button", { name: /^share$/i }));
+
+    expect(writeText).not.toHaveBeenCalled();
+  });
+});

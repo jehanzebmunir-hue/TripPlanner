@@ -15,6 +15,7 @@ export const es: TranslationResource = {
     tagline: "Planificador de Viajes",
     offline: "Estás sin conexión — mostrando datos guardados",
     copyLink: "Copiar enlace",
+    share: "Compartir",
     copied: "Copiado ✓",
     newTripTitle: "Tu próximo viaje",
     newTripSubtitle: "Planifica tu viaje para empezar",
@@ -110,6 +111,8 @@ export const es: TranslationResource = {
     stillValid: "¿Sigue vigente?",
     added: "Añadido ✓",
     addToTrip: "Añadir al viaje",
+    recentlyConfirmed_one: "✓ Confirmado por {{count}} visitante",
+    recentlyConfirmed_other: "✓ Confirmado por {{count}} visitantes",
   },
   itinerary: {
     emptyState: "Añade lugares desde Descubrir para armar tu itinerario.",

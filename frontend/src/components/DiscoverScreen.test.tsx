@@ -76,6 +76,27 @@ describe("DiscoverScreen", () => {
     expect(screen.getByText("The Met")).toBeInTheDocument();
   });
 
+  it("shows no confirmation badge for a place with zero real recent confirmations -- the common case", async () => {
+    listPlaces.mockResolvedValue([{ ...PLACE, recentConfirmations: 0 }]);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+
+    renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
+
+    await screen.findByText("The Met");
+    expect(screen.queryByText(/confirmed by/i)).not.toBeInTheDocument();
+  });
+
+  it("shows a real, singular/plural-correct confirmation badge from real backend counts", async () => {
+    listPlaces.mockResolvedValue([{ ...PLACE, recentConfirmations: 2 }]);
+    listCities.mockResolvedValue(CITIES);
+    getCityHealth.mockResolvedValue([]);
+
+    renderWithClient(<DiscoverScreen city="nyc" interests={[]} tripId="t1" addedIds={new Set()} />);
+
+    expect(await screen.findByText(/confirmed by 2 visitors/i)).toBeInTheDocument();
+  });
+
   it("shows 'Free' for a confirmed-free place", async () => {
     listPlaces.mockResolvedValue([{ ...PLACE, priceAmount: 0 }]);
     listCities.mockResolvedValue(CITIES);

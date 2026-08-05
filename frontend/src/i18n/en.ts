@@ -13,6 +13,7 @@ export const en = {
     tagline: "Trip Planner",
     offline: "You're offline — showing saved data",
     copyLink: "Copy link",
+    share: "Share",
     copied: "Copied ✓",
     newTripTitle: "Your next trip",
     newTripSubtitle: "Plan your trip to get started",
@@ -108,6 +109,8 @@ export const en = {
     stillValid: "Still valid?",
     added: "Added ✓",
     addToTrip: "Add to trip",
+    recentlyConfirmed_one: "✓ Confirmed by {{count}} visitor",
+    recentlyConfirmed_other: "✓ Confirmed by {{count}} visitors",
   },
   itinerary: {
     emptyState: "Add places from Discover to build your itinerary.",

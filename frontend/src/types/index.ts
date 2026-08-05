@@ -27,6 +27,10 @@ export interface Place {
   confidence: number;
   band: Band;
   daysSince: number;
+  // A real count of real "valid" Confirmation rows in the last 30 days --
+  // not a fabricated popularity score. 0 is a real, common value, not an
+  // error or missing data.
+  recentConfirmations: number;
 }
 
 export interface TripItem {

@@ -98,6 +98,19 @@ export function PlaceCard({
 
       {place.description && <p className="text-[13px] text-ink-soft">{place.description}</p>}
 
+      {/* A real, non-fabricated "well-attested" signal -- an actual count of
+          actual visitors who clicked "Still valid?" recently, not an
+          invented popularity score. Distinct from the verified/aging/stale
+          badge above (data freshness) -- this is about real crowd
+          confirmation, a different kind of trust signal. Omitted entirely
+          at 0, the common case, rather than a "not yet confirmed" note that
+          would read as a negative signal for what's most of this data. */}
+      {place.recentConfirmations > 0 && (
+        <p className="text-[11px] font-semibold text-verified">
+          {t("placeCard.recentlyConfirmed", { count: place.recentConfirmations })}
+        </p>
+      )}
+
       <div className="flex items-center justify-between gap-2.5 pt-0.5">
         <span className="text-xs text-ink-faint">
           {categoryLabel}

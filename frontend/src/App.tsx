@@ -120,8 +120,25 @@ export default function App() {
     setTab("discover");
   }
 
-  function copyLink() {
-    navigator.clipboard.writeText(window.location.href).then(() => {
+  // Real feature detection, not a UA sniff -- most mobile browsers (and some
+  // desktop ones) support the native OS share sheet, which is a genuinely
+  // better experience than a silent clipboard copy when it's available.
+  // Falls back to the exact previous clipboard behavior when it isn't, and
+  // also falls back to it if a real share attempt fails for any reason other
+  // than the user just canceling the share sheet (not a real failure).
+  const canShare = typeof navigator !== "undefined" && typeof navigator.share === "function";
+
+  async function copyLink() {
+    const url = window.location.href;
+    if (canShare) {
+      try {
+        await navigator.share({ title: t("app.tagline"), text: trip?.destination, url });
+        return;
+      } catch (err) {
+        if ((err as Error).name === "AbortError") return; // user canceled -- not a failure
+      }
+    }
+    navigator.clipboard.writeText(url).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
@@ -163,7 +180,7 @@ export default function App() {
                 onClick={copyLink}
                 className="font-mono text-[10.5px] uppercase tracking-wide text-ink-faint underline"
               >
-                <span role="status">{copied ? t("app.copied") : t("app.copyLink")}</span>
+                <span role="status">{canShare ? t("app.share") : copied ? t("app.copied") : t("app.copyLink")}</span>
               </button>
             )}
             <div className="flex gap-1 font-mono text-[10.5px] uppercase tracking-wide text-ink-faint" aria-label={t("app.language")}>
