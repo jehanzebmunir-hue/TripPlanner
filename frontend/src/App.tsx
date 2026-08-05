@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { CalendarDays, Compass, ListChecks, LucideIcon, SlidersHorizontal } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { setEditToken } from "./api";
 import { trackEvent } from "./analytics";
@@ -16,6 +17,18 @@ import { useOnlineStatus } from "./useOnlineStatus";
 type Tab = "setup" | "discover" | "itinerary" | "checklist";
 
 const TABS: Tab[] = ["setup", "discover", "itinerary", "checklist"];
+
+// Chosen via a dedicated design pass (Claude Design), not a default pick --
+// generic/unbranded on purpose since the product's own name isn't final yet.
+// strokeLinecap="square"/strokeLinejoin="miter" override Lucide's own
+// rounded default caps/joins to match this app's sharp-cornered, no-
+// rounded-corners aesthetic instead.
+const TAB_ICONS: Record<Tab, LucideIcon> = {
+  setup: SlidersHorizontal,
+  discover: Compass,
+  itinerary: CalendarDays,
+  checklist: ListChecks,
+};
 
 function tripIdFromUrl(): string | undefined {
   return window.location.pathname.match(/^\/trip\/([^/]+)/)?.[1];
@@ -191,27 +204,33 @@ export default function App() {
         aria-label={t("app.tagline")}
         className="sticky top-[86px] z-10 flex gap-0.5 border-b border-line bg-paper px-5 pt-2.5"
       >
-        {TABS.map((tabName) => (
-          <button
-            key={tabName}
-            type="button"
-            role="tab"
-            id={`tab-${tabName}`}
-            aria-selected={tab === tabName}
-            aria-controls="main-content"
-            onClick={() => setTab(tabName)}
-            className={`flex-1 border-b-2 px-1 pb-3 pt-2.5 font-mono text-[12.5px] capitalize tracking-wide ${
-              tab === tabName ? "border-accent text-ink" : "border-transparent text-ink-faint"
-            }`}
-          >
-            {t(`app.tabs.${tabName}`)}
-            {tabName === "itinerary" && addedIds.size > 0 && (
-              <span className="ml-1.5 rounded-full bg-accent px-1.5 py-0.5 font-mono text-[10px] text-onaccent">
-                {addedIds.size}
+        {TABS.map((tabName) => {
+          const Icon = TAB_ICONS[tabName];
+          return (
+            <button
+              key={tabName}
+              type="button"
+              role="tab"
+              id={`tab-${tabName}`}
+              aria-selected={tab === tabName}
+              aria-controls="main-content"
+              onClick={() => setTab(tabName)}
+              className={`flex-1 border-b-2 px-1 pb-3 pt-2.5 font-mono text-[12.5px] capitalize tracking-wide ${
+                tab === tabName ? "border-accent text-ink" : "border-transparent text-ink-faint"
+              }`}
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <Icon size={14} strokeWidth={2} strokeLinecap="square" strokeLinejoin="miter" aria-hidden="true" />
+                {t(`app.tabs.${tabName}`)}
               </span>
-            )}
-          </button>
-        ))}
+              {tabName === "itinerary" && addedIds.size > 0 && (
+                <span className="ml-1.5 rounded-full bg-accent px-1.5 py-0.5 font-mono text-[10px] text-onaccent">
+                  {addedIds.size}
+                </span>
+              )}
+            </button>
+          );
+        })}
       </nav>
 
       <main

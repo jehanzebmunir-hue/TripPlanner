@@ -31,9 +31,15 @@ describe("SetupScreen", () => {
 
     renderWithClient(<SetupScreen interests={[]} onInterestsChange={vi.fn()} onCreated={vi.fn()} />);
 
-    await waitFor(() => {
-      expect(screen.getByRole("combobox", { name: "Destination" })).toHaveValue("nyc");
-    });
+    // A longer-than-RTL's-default timeout, not a looser assertion -- passes
+    // in well under a second in isolation; only needed under real
+    // parallel-worker contention running the full suite at once.
+    await waitFor(
+      () => {
+        expect(screen.getByRole("combobox", { name: "Destination" })).toHaveValue("nyc");
+      },
+      { timeout: 3000 }
+    );
   });
 
   it("submits the selected city, dates, and interests when the trip is created", async () => {
