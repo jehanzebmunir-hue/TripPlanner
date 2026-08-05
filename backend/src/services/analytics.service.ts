@@ -20,6 +20,7 @@ const KNOWN_EVENTS = new Set([
   "city_search_used",
   "itinerary_drag_move",
   "trip_edited",
+  "booking_link_clicked",
 ]);
 
 export async function recordEvent(name: string, context?: string): Promise<void> {

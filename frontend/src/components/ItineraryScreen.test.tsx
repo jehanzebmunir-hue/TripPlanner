@@ -29,7 +29,10 @@ vi.mock("../ics", async () => {
 });
 
 const trackEvent = vi.fn();
-vi.mock("../analytics", () => ({ trackEvent: (...args: unknown[]) => trackEvent(...args) }));
+vi.mock("../analytics", async () => {
+  const actual = await vi.importActual<typeof import("../analytics")>("../analytics");
+  return { tagBookingUrl: actual.tagBookingUrl, trackEvent: (...args: unknown[]) => trackEvent(...args) };
+});
 
 const CITIES = [
   { slug: "tokyo", name: "Tokyo, Japan", country: "JP", currency: "JPY", timezone: "Asia/Tokyo" },
@@ -259,5 +262,23 @@ describe("ItineraryScreen", () => {
     await waitFor(() => expect(screen.getByText("Senso-ji")).toBeInTheDocument());
 
     expect(screen.getByRole("button", { name: /export calendar/i })).toBeDisabled();
+  });
+
+  it("tags an outbound booking link with real attribution params and tracks the click, keyed to the place's own source", async () => {
+    const bookablePlace = { ...PLACE, source: "ticketmaster", bookingRef: "https://www.ticketmaster.com/event/123", bookingLabel: "Buy tickets" };
+    getItinerary.mockResolvedValue([{ dayIndex: 1, date: null, stops: [{ place: bookablePlace, transitFromPrevious: null, legId: null, itemDayIndex: 1 }] }]);
+    listCities.mockResolvedValue(CITIES);
+    getTrip.mockResolvedValue(TRIP);
+
+    renderWithClient(<ItineraryScreen tripId="trip1" />);
+    const link = await screen.findByRole("link", { name: /buy tickets/i });
+
+    const href = new URL(link.getAttribute("href")!);
+    expect(href.origin + href.pathname).toBe("https://www.ticketmaster.com/event/123");
+    expect(href.searchParams.get("utm_source")).toBe("tripplanner");
+    expect(href.searchParams.get("utm_content")).toBe("ticketmaster");
+
+    fireEvent.click(link);
+    expect(trackEvent).toHaveBeenCalledWith("booking_link_clicked", "ticketmaster");
   });
 });

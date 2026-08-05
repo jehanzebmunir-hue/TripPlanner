@@ -25,6 +25,14 @@ describe("recordEvent", () => {
     expect(analyticsEventCreate).toHaveBeenCalledWith({ data: { name: "map_toggled", context: "nyc" } });
   });
 
+  it("records a booking_link_clicked event, keyed to the place's own source adapter as context", async () => {
+    const { recordEvent } = await import("./analytics.service");
+
+    await recordEvent("booking_link_clicked", "ticketmaster");
+
+    expect(analyticsEventCreate).toHaveBeenCalledWith({ data: { name: "booking_link_clicked", context: "ticketmaster" } });
+  });
+
   it("rejects an unknown event name rather than logging arbitrary free text", async () => {
     const { recordEvent } = await import("./analytics.service");
 

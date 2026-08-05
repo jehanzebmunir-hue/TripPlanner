@@ -1,7 +1,7 @@
 import { TFunction } from "i18next";
 import { lazy, Suspense, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { trackEvent } from "../analytics";
+import { tagBookingUrl, trackEvent } from "../analytics";
 import { daysBetween } from "../dateUtils";
 import { useAutoFillItinerary, useCities, useItinerary, useMoveItem, useTrip } from "../hooks";
 import { buildIcs, downloadIcs } from "../ics";
@@ -261,9 +261,10 @@ export function ItineraryScreen({ tripId }: { tripId: string }) {
                   {s.place.description && <p className="mb-2 text-xs text-ink-soft">{s.place.description}</p>}
                   {s.place.bookingRef && (
                     <a
-                      href={s.place.bookingRef}
+                      href={tagBookingUrl(s.place.bookingRef, s.place.source)}
                       target="_blank"
                       rel="noreferrer"
+                      onClick={() => trackEvent("booking_link_clicked", s.place.source)}
                       className="inline-block bg-accent px-3 py-2 text-xs font-bold text-onaccent"
                     >
                       {s.place.bookingLabel ?? t("itinerary.book")} ↗

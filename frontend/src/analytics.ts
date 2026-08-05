@@ -17,7 +17,8 @@ export type AnalyticsEventName =
   | "language_changed"
   | "city_search_used"
   | "itinerary_drag_move"
-  | "trip_edited";
+  | "trip_edited"
+  | "booking_link_clicked";
 
 export function trackEvent(name: AnalyticsEventName, context?: string): void {
   fetch(`${BASE}/events`, {
@@ -27,4 +28,23 @@ export function trackEvent(name: AnalyticsEventName, context?: string): void {
   }).catch(() => {
     // Deliberately swallowed -- see module comment.
   });
+}
+
+// Tags an outbound booking link with UTM params before any affiliate deal
+// exists, so real referral-attribution data (on the receiving site's own
+// analytics) accumulates from day one -- retrofitting this after the fact
+// loses the historical data a future affiliate negotiation would want.
+// Falls back to the raw url unmodified if it's not a real parseable URL
+// (defensive only; every real adapter source already gives out an absolute
+// URL, this just never breaks a real booking link over a malformed one).
+export function tagBookingUrl(url: string, source: string): string {
+  try {
+    const tagged = new URL(url);
+    tagged.searchParams.set("utm_source", "tripplanner");
+    tagged.searchParams.set("utm_medium", "referral");
+    tagged.searchParams.set("utm_content", source);
+    return tagged.toString();
+  } catch {
+    return url;
+  }
 }
