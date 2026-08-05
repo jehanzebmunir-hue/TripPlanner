@@ -35,6 +35,7 @@ const workingAdapter = {
 const emptyAdapter = { name: "empty", run: vi.fn().mockResolvedValue([]) };
 const brokenAdapter = { name: "broken", run: vi.fn().mockRejectedValue(new Error("upstream 500")) };
 const overpassAdapter = { name: "overpass", run: vi.fn().mockResolvedValue([]) };
+const googlePlacesAdapter = { name: "google-places", run: vi.fn().mockResolvedValue([]) };
 const notConfiguredAdapter = { name: "notConfigured", run: vi.fn().mockResolvedValue(null) };
 
 vi.mock("../adapters", () => ({
@@ -43,6 +44,7 @@ vi.mock("../adapters", () => ({
     empty: emptyAdapter,
     broken: brokenAdapter,
     overpass: overpassAdapter,
+    "google-places": googlePlacesAdapter,
     notConfigured: notConfiguredAdapter,
   },
   adaptersForCity: (city: { extraAdapters?: string[] }) => [
@@ -50,6 +52,7 @@ vi.mock("../adapters", () => ({
     "empty",
     "broken",
     "overpass",
+    "google-places",
     "notConfigured",
     ...(city.extraAdapters ?? []),
   ],
@@ -64,6 +67,8 @@ describe("ingestCity", () => {
     placeFindMany.mockResolvedValue([]);
     overpassAdapter.run.mockClear();
     overpassAdapter.run.mockResolvedValue([]);
+    googlePlacesAdapter.run.mockClear();
+    googlePlacesAdapter.run.mockResolvedValue([]);
     resolvedCityFindUnique.mockClear();
     resolvedCityFindUnique.mockResolvedValue(null);
   });
@@ -142,7 +147,7 @@ describe("ingestCity", () => {
     const { ingestCity } = await import("./ingestion.service");
     await ingestCity("testville");
 
-    expect(healthUpsert).toHaveBeenCalledTimes(4); // working, empty, broken, overpass
+    expect(healthUpsert).toHaveBeenCalledTimes(5); // working, empty, broken, overpass, google-places
     const brokenCall = healthUpsert.mock.calls.find(
       (c) => (c[0] as { where: { city_adapter: { adapter: string } } }).where.city_adapter.adapter === "broken"
     )?.[0] as { create: { consecutiveFailures: number; lastError: string } };
@@ -166,7 +171,7 @@ describe("ingestCity", () => {
     const result = await ingestCity("testville", ["overpass"]);
 
     expect(placeFindMany).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { city: "testville", source: { not: "overpass" } } })
+      expect.objectContaining({ where: { city: "testville", source: { not: "overpass" }, tier: "static" } })
     );
     expect(upsert).not.toHaveBeenCalled();
     expect(result.overpass).toEqual({ count: 0, ok: true });
@@ -183,6 +188,38 @@ describe("ingestCity", () => {
 
     expect(upsert).toHaveBeenCalledTimes(1);
     expect(result.overpass).toEqual({ count: 1, ok: true });
+  });
+
+  it("skips a google-places record that's a likely duplicate of an already-existing seed place, same as overpass", async () => {
+    placeFindMany.mockResolvedValue([{ name: "Colosseum", lat: 41.8902, lng: 12.4922 }]);
+    googlePlacesAdapter.run.mockResolvedValue([
+      { externalId: "gp1", category: "sightseeing-culture", tier: "static", name: "Colosseum", lat: 41.89021, lng: 12.49221 },
+    ]);
+    const { ingestCity } = await import("./ingestion.service");
+
+    const result = await ingestCity("testville", ["google-places"]);
+
+    expect(placeFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { city: "testville", source: { not: "google-places" }, tier: "static" } })
+    );
+    expect(upsert).not.toHaveBeenCalled();
+    expect(result["google-places"]).toEqual({ count: 0, ok: true });
+  });
+
+  it("does NOT skip a new google-places static record just because an existing volatile (ticketed) record shares its name -- a bookable product and its own landmark's info card are never the same real thing to collapse", async () => {
+    placeFindMany.mockResolvedValue([]); // the tier: "static" filter means a volatile "Casa Loma General Admission" row is never even returned here
+    googlePlacesAdapter.run.mockResolvedValue([
+      { externalId: "gp2", category: "sightseeing-culture", tier: "static", name: "Casa Loma", lat: 43.6780, lng: -79.4094 },
+    ]);
+    const { ingestCity } = await import("./ingestion.service");
+
+    const result = await ingestCity("testville", ["google-places"]);
+
+    expect(placeFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { city: "testville", source: { not: "google-places" }, tier: "static" } })
+    );
+    expect(upsert).toHaveBeenCalledTimes(1);
+    expect(result["google-places"]).toEqual({ count: 1, ok: true });
   });
 
   it("getCityHealth reports degraded: true only for adapters with at least one consecutive failure", async () => {
@@ -211,6 +248,8 @@ describe("ensureCityFresh", () => {
     brokenAdapter.run.mockClear();
     overpassAdapter.run.mockClear();
     overpassAdapter.run.mockResolvedValue([]);
+    googlePlacesAdapter.run.mockClear();
+    googlePlacesAdapter.run.mockResolvedValue([]);
     resolvedCityFindUnique.mockClear();
     resolvedCityFindUnique.mockResolvedValue(null);
   });

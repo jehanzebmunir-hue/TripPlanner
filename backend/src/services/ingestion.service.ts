@@ -70,16 +70,31 @@ export async function ingestCity(
     }
     await recordAdapterHealth(city.slug, adapterName, true);
 
-    // overpass runs alongside google-places for priority-tier cities, and
-    // both can independently surface the same real landmark -- confirmed
-    // live (Brussels' "Manneken Pis" from both sources, 1m apart). Checked
-    // only for overpass (the source added second, and the lower-curation
-    // one of the two) against everything already in the DB for this city,
-    // not just this run's own records.
+    // overpass and google-places both independently surface the same real
+    // landmark for priority-tier cities -- confirmed live (Brussels'
+    // "Manneken Pis" from overpass+google-places, 1m apart) originally, and
+    // confirmed again live at much wider scale directly against the real
+    // production DB: 37 exact-name seed<->google-places duplicates (every
+    // major landmark that has both a hand-curated seed entry and a
+    // google-places entry -- Colosseum, Eiffel Tower, Burj Khalifa, etc, the
+    // google-places side always the strictly less informative one, real
+    // description/priceAmount null every time it duplicates a seed entry)
+    // plus a handful more overpass<->google-places pairs, 35+ cities
+    // affected. Checked for both overpass and google-places (the two
+    // sources added after seed/ticketmaster/seatgeek in adapter run order)
+    // against everything already in the DB for this city, not just this
+    // run's own records. Restricted to tier: "static" existing records only
+    // -- found live that an unrestricted check would have let a new
+    // google-places "Casa Loma" (the landmark) get silently skipped because
+    // an existing ticketmaster "Casa Loma General Admission" (a real,
+    // distinct bookable ticket product, not an informational duplicate)
+    // name-matched it; a ticketed product and its own landmark's info card
+    // are never the same real thing to collapse.
+    const DEDUP_AGAINST_EXISTING = new Set(["overpass", "google-places"]);
     let existingForDedup: { name: string; lat: number | null; lng: number | null }[] = [];
-    if (adapterName === "overpass" && records.length > 0) {
+    if (DEDUP_AGAINST_EXISTING.has(adapterName) && records.length > 0) {
       existingForDedup = await prisma.place.findMany({
-        where: { city: city.slug, source: { not: "overpass" } },
+        where: { city: city.slug, source: { not: adapterName }, tier: "static" },
         select: { name: true, lat: true, lng: true },
       });
     }
